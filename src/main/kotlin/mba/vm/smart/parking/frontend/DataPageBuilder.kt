@@ -7,8 +7,10 @@ import mba.vm.smart.parking.data.DataRequest
 import mba.vm.smart.parking.data.DataRequest.Companion.handlerMap
 import mba.vm.smart.parking.data.handler.BaseDataHandler
 import mba.vm.smart.parking.frontend.ui.HTMLElement
+import mba.vm.smart.parking.tool.StringBuilderTool.appendOrNothing
 import mba.vm.smart.parking.tool.UserLoginTool.getUserByRequest
 import org.owasp.encoder.Encode
+import java.util.*
 
 /**
  * SmartParking - mba.vm.smart.parking.frontend
@@ -35,7 +37,7 @@ data class DataPageBuilder(
     val dataType: DataRequest.DataType,
     val keyDisplayNameMap: Map<String, String>,
     val notAllowDirect: Boolean = true,
-    val extraHTMLElement: List<HTMLElement>?
+    val extraHTMLElement: Queue<HTMLElement>?
 ) {
 
     /**
@@ -62,16 +64,22 @@ data class DataPageBuilder(
             """.trimIndent())
             sb.append(warnScript)
         }
-        when (accessLevel) {
-            BaseDataHandler.AccessLevel.READ -> {}
-            BaseDataHandler.AccessLevel.WRITE -> {}
+        val scriptString: String = when (accessLevel) {
+            BaseDataHandler.AccessLevel.READ -> {
+                buildJavaScript(false)
+            }
+
+            BaseDataHandler.AccessLevel.WRITE -> {
+                buildJavaScript(true)
+            }
+
             BaseDataHandler.AccessLevel.NO_ACCESS -> {
                 val noAccessScript: HTMLElement = HTMLElement("script")
                     .addClass("need-load")
                     .setContent("""
-                        window.mdui.snackbar({message: "权限不足，无法访问该页面"});
-                        window.location = "${request.contextPath}/#";
-                    """.trimIndent())
+                            window.mdui.snackbar({message: "权限不足，无法访问该页面"});
+                            window.location = "${request.contextPath}/#";
+                        """.trimIndent())
                 sb.append(noAccessScript);
                 return sb.toString()
             }
@@ -90,43 +98,118 @@ data class DataPageBuilder(
             )
         )
         sb.append(aioElement)
-        val nameWithDisplayObject: String = Gson().toJson(keyDisplayNameMap)
         val javaScript: HTMLElement = HTMLElement("script").addClass("need-load")
-            .setContent("""// @language=JavaScript
+            .setContent(scriptString)
+        sb.append(javaScript)
+        extraHTMLElement?.forEach { sb.append(it) }
+        return sb.toString()
+    }
+
+    private fun buildJavaScript(isWriteable: Boolean = false): String {
+        val nameWithDisplayObject: String = Gson().toJson(keyDisplayNameMap)
+        val sb: StringBuilder = StringBuilder()
+        sb.appendOrNothing(isWriteable, "let isModifying = false;let isAsking = false;").append("""
             const nameWithDisplayObject = $nameWithDisplayObject;
-            const infoTheadMainTr = document.querySelector(".$pageName-thead").children[0];
-            for (let key in nameWithDisplayObject) {
-                if (nameWithDisplayObject.hasOwnProperty(key)) {
-                    const currentTd = document.createElement("td");
-                    currentTd.classList.add("$pageName-column", "$pageName-column-" + key);
-                    currentTd.innerText = nameWithDisplayObject[key];
-                    infoTheadMainTr.appendChild(currentTd);
-                }
-            }
-            sendRequest("POST", API_ROOT + "data", JSON.stringify({
-                "type": "$dataType",
-                "action": "SELECT",
-                "data": {}
-            }), function (result) {
-                const infoTbody = document.querySelector(".$pageName-tbody");
-                const listData = result.data.data.list;
-                console.log(listData);
-                let count = 0;
-                for (const item of listData) {
-                    count++;
-                    const current = document.createElement("tr");
-                    current.classList.add("$pageName-row", "$pageName-row-id-" + item["id"], "$pageName-row-count-" + count);
-                    current.classList.add(count % 2 === 0 ? "$pageName-row-even" : "$pageName-row-odd");
-                    const fields = Object.keys(nameWithDisplayObject);
-                    for (const field of fields) {
-                        const cell = document.createElement("td");
-                        cell.classList.add("$pageName-row-field", "$pageName-row-field-" + field)
-                        cell.innerText = item[field] === undefined ? "" : item[field];
-                        current.appendChild(cell);
+                        const infoTheadMainTr = document.querySelector(".$pageName-thead").children[0];
+                        for (let key in nameWithDisplayObject) {
+                            if (nameWithDisplayObject.hasOwnProperty(key)) {
+                                const currentTd = document.createElement("td");
+                                currentTd.classList.add("$pageName-column", "$pageName-column-" + key);
+                                currentTd.innerText = nameWithDisplayObject[key];
+                                infoTheadMainTr.appendChild(currentTd);
+                            }
+                        }
+                        sendRequest("POST", API_ROOT + "data", JSON.stringify({
+                            "type": "$dataType",
+                            "action": "SELECT",
+                            "data": {}
+                        }), function (result) {
+                            const infoTbody = document.querySelector(".$pageName-tbody");
+                            const listData = result.data.data.list;
+                            let count = 0;
+                            for (const item of listData) {
+                                count++;
+                                const current = document.createElement("tr");
+                                current.classList.add("$pageName-row", "$pageName-row-id-" + item["id"], "$pageName-row-count-" + count);
+                                current.classList.add(count % 2 === 0 ? "$pageName-row-even" : "$pageName-row-odd");
+                                const fields = Object.keys(nameWithDisplayObject);
+                                for (const field of fields) {
+                                    const fieldData = item[field] === undefined ? "" : item[field];
+                                    const cell = document.createElement("td");
+                                    cell.classList.add("$pageName-row-field", "$pageName-row-field-" + field)
+                                    const display = document.createElement("span");
+                                    display.innerText = fieldData;
+        """.trimIndent())
+        sb.appendOrNothing(isWriteable, """
+            const modifyInput = document.createElement("mdui-text-field");
+            modifyInput.style.display = "none";
+            modifyInput.setAttribute("variant", "filled");
+            modifyInput.setAttribute("label", nameWithDisplayObject[field]);
+            modifyInput.setAttribute("value", fieldData);
+            cell.addEventListener("dblclick", function () {
+                    if (isModifying === false) {
+                        isModifying = true;
+                        display.style.display = "none";
+                        modifyInput.style.display = "block";
+                        modifyInput.focus();
                     }
-                    infoTbody.appendChild(current);
-                }
-            }, function (res) {
+                });
+        function modify() {
+            if (isAsking) return;
+            isAsking = true;
+            const currentValue = $(this).val();
+            if (currentValue !== display.textContent) {
+                window.mdui.dialog({
+                    headline: "提示",
+                    description: "当前文本框 (" + "第 " + count + " 行 - " + nameWithDisplayObject[field] + ") 已修改, 是否保存?",
+                    actions: [
+                        {
+                            text: "取消",
+                        },
+                        {
+                            text: "确定",
+                            onClick: () => {
+                                // display.innerText = currentValue;
+                                const data = {
+                                    "type": "$dataType",
+                                    "action": "UPDATE",
+                                    "data": {
+                                        "id": item["id"],
+                                    }
+                                }
+                                data.data[field] = currentValue;
+                                sendRequest("POST", API_ROOT + "data", JSON.stringify(data), function () {
+                                    window.mdui.snackbar({message: "修改成功"})
+                                    display.innerText = currentValue
+                                }, function (res) {
+                                    window.mdui.snackbar({message: "修改失败。"})
+                                }, undefined, "application/json")
+                            },
+                        }
+                    ],
+                    onClosed: () => {
+                        isAsking = false;
+                        isModifying = false;
+                        modifyInput.style.display = "none";
+                        display.style.display = "block";
+                    }
+                });
+            } else {
+                isAsking = false;
+                isModifying = false;
+                modifyInput.style.display = "none";
+                display.style.display = "block";
+            }
+        }
+        modifyInput.addEventListener("blur", modify);
+        modifyInput.addEventListener("keydown", function (event) {if (event.which === 13) modify.call(this);});
+        """.trimIndent())
+            .append("cell.appendChild(display);")
+            .appendOrNothing(isWriteable, "cell.appendChild(modifyInput);")
+            .append("""
+                current.appendChild(cell);
+            }   infoTbody.appendChild(current);
+            }}, function (res) {
                 try {
                     const data = JSON.parse(res.xhr.response);
                     snakeBar({
@@ -138,10 +221,9 @@ data class DataPageBuilder(
                         message: "与服务器连接出现问题，状态码: " + res.xhr.status
                     });
                 }
-            }, undefined, "application/json")
-        """.trimIndent())
-        sb.append(javaScript)
-        extraHTMLElement?.forEach { sb.append(it) }
+            }, undefined, "application/json");
+            """.trimIndent())
         return sb.toString()
     }
+
 }

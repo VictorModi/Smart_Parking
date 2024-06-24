@@ -2,7 +2,7 @@ package mba.vm.smart.parking.data
 
 import mba.vm.smart.parking.data.handler.BaseDataHandler
 import mba.vm.smart.parking.data.handler.CarHandler
-import mba.vm.smart.parking.tool.MappingTools.getTyped
+import mba.vm.smart.parking.tool.MappingTool.getTyped
 
 /**
  * SmartParking - mba.vm.smart.parking.data

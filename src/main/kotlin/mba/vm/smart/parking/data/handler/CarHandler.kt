@@ -4,10 +4,8 @@ import mba.vm.smart.parking.Car_informationQueries
 import mba.vm.smart.parking.DataSourceProvider.getDatabase
 import mba.vm.smart.parking.UserType
 import mba.vm.smart.parking.data.DataResult
-import mba.vm.smart.parking.tool.MappingTools.getInt
-import mba.vm.smart.parking.tool.MappingTools.getTyped
-import java.sql.SQLException
-import kotlin.math.roundToInt
+import mba.vm.smart.parking.tool.MappingTool.getInt
+import mba.vm.smart.parking.tool.MappingTool.getTyped
 
 /**
  * SmartParking - mba.vm.smart.parking.data.handler
@@ -18,7 +16,7 @@ import kotlin.math.roundToInt
  */
 object CarHandler : BaseDataHandler() {
     override val readPermission: Array<UserType> = arrayOf(UserType.SUPER_ADMIN, UserType.PARKING_ADMIN)
-    override val writePermission: Array<UserType> = arrayOf(UserType.SUPER_ADMIN, UserType.PARKING_ADMIN)
+    override val writePermission: Array<UserType> = arrayOf(UserType.SUPER_ADMIN)
     private val queries: Car_informationQueries = getDatabase().car_informationQueries
 
     override fun select(data: Map<String, Any>?): DataResult {

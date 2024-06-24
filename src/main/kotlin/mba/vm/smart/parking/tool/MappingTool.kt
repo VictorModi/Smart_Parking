@@ -13,7 +13,7 @@ import kotlin.math.roundToInt
 /**
  * MappingTools对象，提供对映射（Map）进行类型安全访问的方法。
  */
-object MappingTools {
+object MappingTool {
     /**
      * 从映射中获取指定键的值并将其转换为指定类型。
      * @param key 要获取值的键。

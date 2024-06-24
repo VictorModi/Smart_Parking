@@ -4,7 +4,7 @@ import 'mdui/mdui.css';
 import '@mdui/icons/menu--rounded.js';
 import '@mdui/icons/menu-open--rounded.js';
 
-import {$, confirm, getTheme, prompt, setTheme, snackbar} from 'mdui';
+import {$, confirm, getTheme, prompt, setTheme, snackbar, dialog} from 'mdui';
 import '../css/styles.css';
 import {sha224 as _0xD7AC2, sha256 as _0x9DC5A8} from "js-sha256";
 import {sha512 as _0x6C8AD72} from "js-sha512";
@@ -274,6 +274,7 @@ window.mdui = {
     prompt: prompt,
     confirm: confirm,
     snackbar: snackbar,
+    dialog: dialog
 };
 
 window.sendRequest = sendRequest;
