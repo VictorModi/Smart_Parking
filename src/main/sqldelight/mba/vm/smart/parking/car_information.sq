@@ -1,0 +1,77 @@
+CREATE TABLE car_information (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    license_plate VARCHAR(20) UNIQUE,
+    owner_name VARCHAR(50),
+    contact_number VARCHAR(20),
+    brand VARCHAR(50),
+    model VARCHAR(50),
+    color VARCHAR(20)
+);
+
+getCars:
+SELECT *
+FROM car_information;
+
+getPagedCars:
+SELECT *
+FROM car_information
+LIMIT :pageSize OFFSET :offset;
+
+getRowCount:
+SELECT COUNT(*)
+FROM car_information;
+
+getDataCountByFilter:
+SELECT COUNT(*)
+FROM car_information
+WHERE
+  (COALESCE(:licensePlate, '') = '' OR license_plate = :licensePlate)
+  AND (COALESCE(:ownerName, '') = '' OR owner_name = :ownerName)
+  AND (COALESCE(:contactNumber, '') = '' OR contact_number = :contactNumber)
+  AND (COALESCE(:brand, '') = '' OR brand = :brand)
+  AND (COALESCE(:model, '') = '' OR model = :model)
+  AND (COALESCE(:color, '') = '' OR color = :color);
+
+addCar:
+INSERT INTO car_information
+(license_plate, owner_name, contact_number, brand, model, color)
+VALUES (
+:licensePlate,
+:ownerName,
+:contactNumber,
+:brand,
+:model,
+:color
+);
+
+getCarByLicensePlate:
+SELECT license_plate, owner_name, contact_number, brand, model, color
+FROM car_information WHERE license_plate = ? LIMIT 1;
+
+getDataByFilter:
+SELECT *
+FROM car_information
+WHERE
+  (COALESCE(:licensePlate, '') = '' OR license_plate = :licensePlate)
+  AND (COALESCE(:ownerName, '') = '' OR owner_name = :ownerName)
+  AND (COALESCE(:contactNumber, '') = '' OR contact_number = :contactNumber)
+  AND (COALESCE(:brand, '') = '' OR brand = :brand)
+  AND (COALESCE(:model, '') = '' OR model = :model)
+  AND (COALESCE(:color, '') = '' OR color = :color);
+
+updateCarInfo:
+UPDATE car_information
+SET license_plate = COALESCE(:licensePlate, license_plate),
+    owner_name = COALESCE(:ownerName, owner_name),
+    contact_number = COALESCE(:contactNumber, contact_number),
+    brand = COALESCE(:brand, brand),
+    model = COALESCE(:model, model),
+    color = COALESCE(:color, color)
+WHERE id = :id;
+
+deleteCarByID:
+DELETE FROM car_information
+WHERE id = :id;
+
+getAffectedRows:
+SELECT ROW_COUNT();

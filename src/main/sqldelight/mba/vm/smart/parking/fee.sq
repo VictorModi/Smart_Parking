@@ -1,0 +1,8 @@
+CREATE TABLE fee_record (
+    id INTEGER PRIMARY KEY,
+    parking_record_id INTEGER REFERENCES parking_record(id),
+    amount DECIMAL(10, 2),
+    payment_method VARCHAR(20) CHECK (payment_method IN ('alipay', 'wechat', 'cash', 'other')),
+    payment_time DATETIME,
+    remark TEXT
+);

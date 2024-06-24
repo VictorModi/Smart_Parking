@@ -1,0 +1,173 @@
+:root {
+    --mdui-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+    --mdui-motion-duration-short1: 40ms;
+}
+
+:not(:defined) {
+    visibility: hidden;
+}
+
+body, html, .main {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+mdui-top-app-bar {
+    background-color: rgb(var(--mdui-color-surface-container))
+}
+
+mdui-navigation-drawer {
+    border-radius: var(--mdui-shape-corner-none);
+}
+
+.main {
+    display: block;
+}
+
+.app-bar-item {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+
+#progress-container {
+    width: 100%;
+    height: 1px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-color: transparent;
+    z-index: 9999;
+}
+#progress-bar {
+    width: 100%;
+    height: 100%;
+    transition: transform .2s;
+}
+
+.content-container {
+    margin: 25px;
+}
+
+.content {
+    line-height: 1.1111;
+}
+
+.title-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.content-page {
+    display: none;
+}
+
+.collapse-arrow {
+    transition: transform .5s;
+    transform: rotate(180deg);
+}
+
+@keyframes rotate-collapse-arrow {
+    0% {
+        transform: rotate(0deg);
+    }
+    15% {
+        transform: rotate(-25deg);
+    }
+    85% {
+        transform: rotate(205deg);
+    }
+    100% {
+        transform: rotate(180deg);
+    }
+}
+
+@keyframes rotate-back-collapse-arrow {
+    0% {
+        transform: rotate(180deg);
+    }
+    15% {
+        transform: rotate(155deg);
+    }
+    85% {
+        transform: rotate(385deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes fadeOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes progressBarLoading {
+    0% {
+        background-color: #2a83a2;
+        width: 0;
+    }
+    50% {
+        width: 75%;
+    }
+    85% {
+        width: 95%;
+    }
+    100% {
+        background-color: #88cb7f;
+        width: 99.5%;
+    }
+}
+
+.progress-bar-loading {
+    animation: progressBarLoading 15s forwards;
+}
+
+.progress-bar-complied {
+    background-color: #88cb7f;
+}
+
+.progress-bar-failed {
+    background-color: red;
+}
+
+.fade-in {
+    animation: fadeIn 2s ease forwards;
+}
+
+.fade-out {
+    animation: fadeOut 5s ease forwards;
+}
+
+.rotate-collapse-arrow-180 {
+    animation: rotate-collapse-arrow .6s forwards;
+}
+
+.rotate-collapse-arrow-0 {
+    animation: rotate-back-collapse-arrow .6s forwards;
+}
+
+a {
+    color: #5a79ba;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #4c6cb3;
+}

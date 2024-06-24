@@ -1,0 +1,41 @@
+CREATE TABLE user (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    permission_level INTEGER NOT NULL,
+    password VARCHAR(128) NOT NULL,
+    two_factor_auth_enabled BOOLEAN DEFAULT FALSE,
+    two_factor_secret_key VARCHAR(128),
+    two_factor_recovery_code VARCHAR(16),
+    created_by INTEGER,
+    last_login_time DATETIME DEFAULT NOW(),
+    account_created_time DATETIME DEFAULT NOW(),
+    is_disabled BOOLEAN DEFAULT FALSE,
+    display_name VARCHAR(50),
+    username VARCHAR(20) NOT NULL UNIQUE,
+    contact_email VARCHAR(32),
+    note VARCHAR(128)
+);
+
+addUser:
+INSERT INTO user (username, permission_level, password, created_by, display_name, contact_email, note)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+getUserByID:
+SELECT id, permission_level, created_by, last_login_time, is_disabled, display_name, username, contact_email, note
+FROM user
+WHERE id = ?
+LIMIT 1;
+
+getUserAllByID:
+SELECT * FROM user WHERE id = ? LIMIT 1;
+
+getIDbyUsername:
+SELECT id FROM user WHERE username = ? LIMIT 1;
+
+getUsersIDsByEmail:
+SELECT id FROM user WHERE contact_email = ?;
+
+getPasswordByID:
+SELECT password FROM user WHERE id = ? LIMIT 1;
+
+updateLastLoginByID:
+UPDATE user SET last_login_time = NOW() WHERE id = ?;

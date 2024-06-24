@@ -1,0 +1,9 @@
+CREATE TABLE reservation_record (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER,
+    parking_space_id INTEGER REFERENCES parking_space(id),
+    reservation_time DATETIME,
+    is_cancelled BOOLEAN DEFAULT FALSE,
+    is_ended BOOLEAN DEFAULT FALSE,
+    CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES car_information(id)
+);

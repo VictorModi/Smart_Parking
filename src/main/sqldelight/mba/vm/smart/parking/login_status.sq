@@ -1,0 +1,7 @@
+CREATE TABLE login_status (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER,
+    session_id VARCHAR(128),
+    is_active BOOLEAN,
+    expiry_time DATETIME
+);

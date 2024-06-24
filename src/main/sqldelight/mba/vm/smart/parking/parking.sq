@@ -1,0 +1,10 @@
+CREATE TABLE parking_record (
+    id INTEGER PRIMARY KEY,
+    car_id INTEGER REFERENCES car_information(id),
+    parking_space_id INTEGER REFERENCES parking_space(id),
+    start_time DATETIME,
+    end_time DATETIME,
+    is_ended BOOLEAN DEFAULT FALSE,
+    CONSTRAINT check_times CHECK (start_time < end_time)
+);
+

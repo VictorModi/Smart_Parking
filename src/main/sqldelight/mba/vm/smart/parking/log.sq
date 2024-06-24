@@ -1,0 +1,6 @@
+CREATE TABLE log (
+    id INTEGER PRIMARY KEY,
+    type VARCHAR(10) CHECK (type IN ('WARN', 'ERROR', 'INFO', 'OTHER')),
+    message TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);

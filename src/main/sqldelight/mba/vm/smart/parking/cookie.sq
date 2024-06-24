@@ -1,0 +1,27 @@
+CREATE TABLE cookie (
+    id INTEGER NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    user_id INTEGER NOT NULL REFERENCES user(id),
+    token VARCHAR(64) NOT NULL,
+    expiration_date DATETIME NOT NULL,
+    last_use DATETIME DEFAULT NOW(),
+    create_at DATETIME DEFAULT NOW(),
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+insertCookie:
+INSERT INTO cookie (user_id, token, expiration_date) VALUES (?, ?, ?);
+
+getUserIDByToken:
+SELECT user_id FROM cookie WHERE token = ? AND is_active = TRUE AND expiration_date > NOW();
+
+setExpiredTokenInactive:
+UPDATE cookie SET is_active = FALSE WHERE expiration_date < NOW();
+
+setInactiveByID:
+UPDATE cookie SET is_active = FALSE WHERE user_id = ?;
+
+updateLastUseByValue:
+UPDATE cookie SET last_use = NOW() WHERE token = ? LIMIT 1;
+
+setInactiveByToken:
+UPDATE cookie SET is_active = FALSE WHERE token = ? LIMIT 1;
