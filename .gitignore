@@ -45,5 +45,5 @@ bin/
 
 /tomcat
 /need-import-libs
-/src/main/web/dist
+#/src/main/web/dist
 /node_modules

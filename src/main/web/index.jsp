@@ -134,7 +134,7 @@
         console.log("I don't know what is " + n + ". Can you tell me something about " + n + "?");
     };
     // env?
-    window.contact.CONTENT_PATH = "${pageContext.request.contextPath}"
+    window.contact.CONTENT_PATH = "${pageContext.request.contextPath}";
     const API_ROOT = "<%=API_ROOT%>";
     const $ = window.mdui.$;
     const snakeBar = window.mdui.snackbar;
