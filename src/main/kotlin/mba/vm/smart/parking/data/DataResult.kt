@@ -45,8 +45,8 @@ data class DataResult(
             return DataResult(
                 affectedRows > 0,
                 if (affectedRows > 0) null else "None of the rows have been modified.",
-                affectedRows,
                 null,
+                affectedRows,
                 null
             )
         }

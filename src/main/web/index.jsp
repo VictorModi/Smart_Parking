@@ -1,7 +1,9 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%><%@ page import="mba.vm.smart.parking.frontend.ui.Navigation" %><%@ page import="static mba.vm.smart.parking.StringContact.TITLE_TEXT" %><%@ page import="static mba.vm.smart.parking.StringContact.API_ROOT" %><%
     request.setCharacterEncoding("UTF-8");
     response.setContentType("text/html; charset=UTF-8");
-    response.setCharacterEncoding("UTF-8");%><%@ page import="mba.vm.smart.parking.tool.UserLoginTool" %><%@ page import="mba.vm.smart.parking.GetUserByID" %><%@ page import="kotlin.Pair" %><%@ page import="mba.vm.smart.parking.UserType" %><%@ page import="org.owasp.encoder.Encode" %><%@ page import="jakarta.servlet.http.Cookie" %><!doctype html>
+    response.setCharacterEncoding("UTF-8");%><%@ page import="mba.vm.smart.parking.tool.UserLoginTool" %><%@ page import="mba.vm.smart.parking.GetUserByID" %><%@ page import="kotlin.Pair" %><%@ page import="mba.vm.smart.parking.UserType" %><%@ page import="org.owasp.encoder.Encode" %><%@ page import="jakarta.servlet.http.Cookie" %>
+<%@ page import="mba.vm.smart.parking.frontend.ui.HTMLElement" %>
+<!doctype html>
 <html lang="cn" class="mdui-theme-auto" xmlns="http://www.w3.org/1999/html" xmlns="">
 <head>
     <meta charset="UTF-8">
@@ -36,8 +38,9 @@
     final Boolean isLogin = USER != null;
     final String DISPLAY_NAME = USER != null ? Encode.forHtml(USER.getFirst().getDisplay_name()) : "游客";
 %>
-<div id="progress-container">
-    <div id="progress-bar"></div>
+<div class="progress-bar-container">
+    <mdui-linear-progress class="loaded-complete-progress-bar progress-bar"></mdui-linear-progress>
+    <mdui-linear-progress class="always-loading-progress-bar progress-bar"></mdui-linear-progress>
 </div>
 <div class="main">
     <mdui-dialog
@@ -113,6 +116,7 @@
                     %>
                     <h1><%=greeting%> <%=DISPLAY_NAME%>！</h1>
                     <p>欢迎进入<%=TITLE_TEXT%>，您可以通过右边的抽屉导航栏查看关于信息<%=!isLogin ? "，更多功能请 <a href=\"#user-login\">登录</a>" : ""%>。</p>
+                        <%="http".equalsIgnoreCase(request.getScheme()) ? "<p><strong>强烈建议使用 HTTPS！</strong> 您当前正在使用不安全的 HTTP 协议，建议切换到 HTTPS 以确保数据传输的安全性。<p>" : ""%>
                 </main>
                 <main class="content content-page">
                     <h1>正在加载...</h1>
@@ -197,6 +201,7 @@
         element.attr("disabled", '');
     });
 </script>
+<%if (USER != null) out.print(new HTMLElement("script").setAttribute("src", request.getContextPath() + "/static/js/dataPage.js"));%>
 <script src="${pageContext.request.contextPath}/static/js/day-night-toggle-switch/script.js"></script>
 </body>
 </html>

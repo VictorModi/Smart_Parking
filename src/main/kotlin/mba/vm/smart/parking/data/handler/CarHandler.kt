@@ -22,27 +22,55 @@ object CarHandler : BaseDataHandler() {
     override fun select(data: Map<String, Any>?): DataResult {
         if (data.isNullOrEmpty()) return DataResult.createSuccess(queries.getCars().executeAsList())
         val isCount = data.getTyped<Boolean, String, Any>("count") ?: false
-        if (isCount) {
-            return DataResult.createSuccessByCount(
-                queries.getDataCountByFilter(
-                    licensePlate = data["license_plate"] as? String,
-                    ownerName = data["owner_name"] as? String,
-                    contactNumber = data["contact_number"] as? String,
-                    brand = data["brand"] as? String,
-                    model = data["model"] as? String,
-                    color = data["color"] as? String,
+        val isLimited = data.getInt("limit") != null && data.getInt("offset") != null;
+        return when (Pair(isCount, isLimited)) {
+            Pair(true, true) -> DataResult.createSuccessByCount(
+                queries.getLimitedCarsCount(
+                    licensePlate = data.getTyped("license_plate"),
+                    ownerName = data.getTyped("owner_name"),
+                    contactNumber = data.getTyped("contact_number"),
+                    brand = data.getTyped("brand"),
+                    model = data.getTyped("model"),
+                    color = data.getTyped("color"),
+                    limit = data.getInt("limit")!!.toLong(),
+                    offset = data.getInt("offset")!!.toLong()
                 ).executeAsOne()
             )
+            Pair(false, true) -> DataResult.createSuccess(
+                queries.getLimitedCars(
+                    licensePlate = data.getTyped("license_plate"),
+                    ownerName = data.getTyped("owner_name"),
+                    contactNumber = data.getTyped("contact_number"),
+                    brand = data.getTyped("brand"),
+                    model = data.getTyped("model"),
+                    color = data.getTyped("color"),
+                    limit = data.getInt("limit")!!.toLong(),
+                    offset = data.getInt("offset")!!.toLong()
+                ).executeAsList()
+            )
+            Pair(true, false) -> DataResult.createSuccessByCount(
+                queries.getDataCountByFilter(
+                    licensePlate = data.getTyped("license_plate"),
+                    ownerName = data.getTyped("owner_name"),
+                    contactNumber = data.getTyped("contact_number"),
+                    brand = data.getTyped("brand"),
+                    model = data.getTyped("model"),
+                    color = data.getTyped("color"),
+                ).executeAsOne()
+            )
+            Pair(false, false) -> DataResult.createSuccess(
+                queries.getDataByFilter(
+                    licensePlate = data.getTyped("license_plate"),
+                    ownerName = data.getTyped("owner_name"),
+                    contactNumber = data.getTyped("contact_number"),
+                    brand = data.getTyped("brand"),
+                    model = data.getTyped("model"),
+                    color = data.getTyped("color")
+                ).executeAsList()
+            )
+
+            else -> DataResult.createFailure("WTF??")
         }
-        return DataResult.createSuccess(
-            queries.getDataByFilter(
-            licensePlate = data["license_plate"] as? String,
-            ownerName = data["owner_name"] as? String,
-            contactNumber = data["contact_number"] as? String,
-            brand = data["brand"] as? String,
-            model = data["model"] as? String,
-            color = data["color"] as? String,
-        ).executeAsList())
     }
 
     override fun insert(data: Map<String, Any>?): DataResult {

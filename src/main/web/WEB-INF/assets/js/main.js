@@ -105,6 +105,10 @@ $(document).one('DOMContentLoaded', function() {
             });
             layoutMain.removeAttr("disabled");
             navAjax = undefined;
+            const contentPageChangedEvent = new CustomEvent('contentPageChanged', {
+                target: section
+            })
+            window.dispatchEvent(contentPageChangedEvent);
         }).then();
     }
     let lastHash = window.location.hash.substring(1);
@@ -200,12 +204,10 @@ $(document).one('DOMContentLoaded', function() {
 });
 
 function sendRequest(method, url, data, success, error, complete, contentType) {
-    const progressBar = $('#progress-bar');
-    const progressContainer = $('#progress-container');
-
-    progressBar.removeClass("progress-bar-loading progress-bar-complied progress-bar-failed").addClass("progress-bar-loading");
-    progressContainer.removeClass('fade-out fade-in').addClass("fade-in");
-
+    const alwaysProgressBar = $(".always-loading-progress-bar");
+    const completedProgressBar = $(".loaded-complete-progress-bar");
+    completedProgressBar.hide();
+    alwaysProgressBar.show();
     return $.ajax({
         method: method,
         url: window.contact.CONTENT_PATH !== undefined ? window.contact.CONTENT_PATH + (url.startsWith('/') ? url : '/' + url) : url,
@@ -214,13 +216,16 @@ function sendRequest(method, url, data, success, error, complete, contentType) {
         timeout: 30000,
         async: true,
         success: function (data, status, xhr) {
-            progressBar.removeClass("progress-bar-loading").addClass("progress-bar-complied");
-            progressContainer.removeClass("fade-in").addClass('fade-out');
+            alwaysProgressBar.hide();
+            completedProgressBar.attr("value", "1");
+            completedProgressBar.show().removeClass("fade-in").addClass('fade-out');
             if (success !== undefined) success({data: data, status: status, xhr: xhr});
         },
         error: function (xhr, status) {
-            progressBar.removeClass("progress-bar-loading").addClass("progress-bar-failed");
-            progressContainer.removeClass("fade-in").addClass('fade-out');
+            // progressBar.removeClass("progress-bar-loading").addClass("progress-bar-failed");
+            alwaysProgressBar.hide();
+            completedProgressBar.attr("value", "0");
+            completedProgressBar.show().removeClass("fade-in").addClass('fade-out');
             if (error !== undefined) error({status: status, xhr: xhr});
         },
         complete: complete,

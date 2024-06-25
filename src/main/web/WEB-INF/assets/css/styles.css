@@ -33,19 +33,16 @@ mdui-navigation-drawer {
     height: 100%;
 }
 
-#progress-container {
-    width: 100%;
-    height: 1px;
-    position: fixed;
-    top: 0;
-    left: 0;
-    background-color: transparent;
+.progress-bar-container {
+    position: absolute;
+    display: flex;
     z-index: 9999;
-}
-#progress-bar {
-    width: 100%;
-    height: 100%;
     transition: transform .2s;
+    width: 100%;
+}
+
+.progress-bar {
+    display: none;
 }
 
 .content-container {

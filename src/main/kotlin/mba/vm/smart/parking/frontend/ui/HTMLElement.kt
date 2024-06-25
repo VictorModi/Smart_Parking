@@ -145,10 +145,11 @@ data class HTMLElement(
         }
 
         val childrenString = children.joinToString("") { it.toString() }
-        return if (content.isEmpty() && children.isEmpty()) {
-            "<$tagName${if (attrString.isNotEmpty()) " $attrString" else ""} />"
-        } else {
-            "<$tagName${if (attrString.isNotEmpty()) " $attrString" else ""}>$content$childrenString</$tagName>"
-        }
+//        return if (content.isEmpty() && children.isEmpty()) {
+//            "<$tagName${if (attrString.isNotEmpty()) " $attrString" else ""} />"
+//        } else {
+//            "<$tagName${if (attrString.isNotEmpty()) " $attrString" else ""}>$content$childrenString</$tagName>"
+//        }
+        return "<$tagName${if (attrString.isNotEmpty()) " $attrString" else ""}>$content$childrenString</$tagName>"
     }
 }
