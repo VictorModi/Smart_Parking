@@ -41,41 +41,39 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
     function startLoad() {
         if (isAllLoaded || isLoading) return;
         isLoading = true;
+        function handleSuccess(res) {
+            const listData = res.data.list;
+            isAllLoaded = listData.length < loadMaxRows;
+            if (isAllLoaded) window.mdui.snackbar({ message: "已经到底啦" });
+            insertDataToTable(isWriteable, listData, tableBody, nameWithDisplayObject, pageName, nextOffset);
+            nextOffset += loadMaxRows;
+        }
+
+        function handleFailure(res) {
+            console.log(res);
+            let errorMessage = "与服务器连接出现问题";
+            if (res.xhr) {
+                errorMessage += "，状态码: " + res.xhr.status;
+            }
+            window.mdui.snackbar({ message: errorMessage });
+        }
+
         getDataArray(dataType, undefined, loadMaxRows, nextOffset)
-            .then((res) => {
-                const listData = res.data.list;
-                if (listData.length === 0) {
-                    isAllLoaded = true;
-                    window.mdui.snackbar({message: "已经到底啦"})
-                } else {
-                    insertDataToTable(isWriteable, listData, tableBody, nameWithDisplayObject, pageName, nextOffset)
-                    nextOffset += loadMaxRows;
-                }
-            })
-            .catch((res) => {
-                console.log(res);
-                try {
-                    const data = JSON.parse(res.xhr.response);
-                    window.mdui.snackbar({
-                        message: "获取数据失败, 原因: " + data.message,
-                    });
-                } catch (e) {
-                    window.mdui.snackbar({
-                        message: "与服务器连接出现问题，状态码: " + res.xhr.status,
-                    });
-                }
-            })
-            .finally (() => {
+            .then(handleSuccess)
+            .catch(handleFailure)
+            .finally(() => {
                 isLoading = false;
-            })
+            });
     }
     startLoad();
     function loadMore() {
         if (isLoading) return;
         if (isAllLoaded) document.querySelector(".layout-main").removeEventListener("scroll", loadMore);
-        const startLoadScrollTop = this.scrollHeight - this.clientHeight  - 1;
+        const startLoadScrollTop = this.scrollHeight - this.clientHeight  - 5;
         const aboutScrollTop = Math.round(this.scrollTop);
-        if (aboutScrollTop > startLoadScrollTop) startLoad();
+        const isChecked = aboutScrollTop > startLoadScrollTop;
+        console.log(isChecked);
+        if (isChecked) startLoad();
     }
 
     document.querySelector(".layout-main").addEventListener("scroll", loadMore)
