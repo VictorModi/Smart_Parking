@@ -3,13 +3,37 @@ let isModifying = false;
 let isAsking = false;
 
 let isAllLoaded = false;
-let isLoading = false;
 
 window.addEventListener("contentPageChanged", function () {
     isModifying = false;
     isAsking = false;
     isAllLoaded = false
 });
+
+class CallbackQueue {
+    constructor() {
+        this.queue = [];
+        this.processing = false;
+        this.locked = false;
+    }
+
+    enqueue(callback) {
+        if (this.locked) return;
+        this.queue.push(callback);
+        this.process();
+    }
+
+    process() {
+        if (this.processing || this.queue.length === 0) return;
+
+        this.processing = true;
+        const callback = this.queue.shift();
+        callback(() => {
+            this.processing = false;
+            this.process();
+        });
+    }
+}
 
 /**
  * Need Compose DataPageBuild (Kotlin), it will create column to table and other thing...?
@@ -20,11 +44,16 @@ window.addEventListener("contentPageChanged", function () {
  * @param dataType
  */
 function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
-    const loadMaxRows = 15;
+    const layoutMain = document.querySelector(".layout-main");
+
     let nextOffset = 0;
+    const loadMaxRows = 15;
 
     const infoTheadMainTr = document.querySelector(`.${pageName}-thead`).children[0];
     const countTd = document.createElement("td");
+
+    const callbackQueue = new CallbackQueue();
+
     countTd.innerText = "#";
     countTd.classList.add(`.${pageName}-column`, `.${pageName}-column-count`);
     infoTheadMainTr.appendChild(countTd);
@@ -37,54 +66,70 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
             infoTheadMainTr.appendChild(currentTd);
         }
     }
+
     const tableBody = document.querySelector(`.${pageName}-tbody`);
     function startLoad() {
-        if (isAllLoaded || isLoading) return;
-        isLoading = true;
-        function handleSuccess(res) {
-            const listData = res.data.list;
-            isAllLoaded = listData.length < loadMaxRows;
-            if (isAllLoaded) window.mdui.snackbar({ message: "已经到底啦" });
-            insertDataToTable(isWriteable, listData, tableBody, nameWithDisplayObject, pageName, nextOffset);
-            nextOffset += loadMaxRows;
-        }
-
-        function handleFailure(res) {
-            console.log(res);
-            let errorMessage = "与服务器连接出现问题";
-            if (res.xhr) {
-                errorMessage += "，状态码: " + res.xhr.status;
+        if (isAllLoaded) return;
+        callbackQueue.enqueue((done) => {
+            function handleSuccess(res) {
+                const listData = res.data.list;
+                isAllLoaded = listData.length < loadMaxRows;
+                if (isAllLoaded) window.mdui.snackbar({ message: "已经到底啦" });
+                insertDataToTable(isWriteable, listData, tableBody, nameWithDisplayObject, pageName, nextOffset);
+                nextOffset += loadMaxRows;
             }
-            window.mdui.snackbar({ message: errorMessage });
-        }
 
-        getDataArray(dataType, undefined, loadMaxRows, nextOffset)
-            .then(handleSuccess)
-            .catch(handleFailure)
-            .finally(() => {
-                isLoading = false;
-            });
+            function handleFailure(res) {
+                console.log(res);
+                let errorMessage = "与服务器连接出现问题";
+                if (res.xhr) {
+                    errorMessage += "，状态码: " + res.xhr.status;
+                }
+                window.mdui.snackbar({ message: errorMessage });
+            }
+
+            getDataArray(dataType, undefined, loadMaxRows, nextOffset)
+                .then(handleSuccess)
+                .catch(handleFailure)
+                .finally(() => {
+                    done();
+                });
+        });
     }
-    startLoad();
+
     function loadMore() {
-        if (isLoading) return;
-        if (isAllLoaded) document.querySelector(".layout-main").removeEventListener("scroll", loadMore);
-        const startLoadScrollTop = this.scrollHeight - this.clientHeight  - 5;
+        if (isAllLoaded) {
+            document.querySelector(".layout-main").removeEventListener("scroll", loadMore);
+            return -1;
+        }
+        const startLoadScrollTop = this.scrollHeight - this.clientHeight - 5;
         const aboutScrollTop = Math.round(this.scrollTop);
-        const isChecked = aboutScrollTop > startLoadScrollTop;
-        console.log(isChecked);
+        const isChecked = aboutScrollTop > startLoadScrollTop ||
+            (startLoadScrollTop === 0 && aboutScrollTop === 0);
         if (isChecked) startLoad();
+        return isChecked ? 1 : 0;
+    }
+    layoutMain.addEventListener("scroll", loadMore);
+
+    function loadByMaxTop() {
+        if (layoutMain.scrollHeight - layoutMain.clientHeight - 5 < 0 &&
+            !isAllLoaded) {
+            startLoad()
+            callbackQueue.enqueue((done) => {
+                loadByMaxTop();
+                done();
+            })
+        }
     }
 
-    document.querySelector(".layout-main").addEventListener("scroll", loadMore)
     setTimeout(function () {
+        loadByMaxTop();
         window.addEventListener("contentPageChanged", function () {
-            document.querySelector(".layout-main").removeEventListener("scroll", loadMore)
+            layoutMain.removeEventListener("scroll", loadMore)
             console.log(`${pageName} scroll Listener is removed.`);
         }, {once: true});
     }, 0);
 }
-
 
 function getDataArray(dataType, extra, limit, offset) {
     const requestData = {
@@ -135,21 +180,29 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
                 cell.innerHTML = fieldData;
             } else {
                 const display = document.createElement("span");
-                const modifyInput = document.createElement("mdui-text-field");
 
                 display.innerText = fieldData;
-                modifyInput.style.display = "none";
-                modifyInput.setAttribute("variant", "filled");
-                modifyInput.setAttribute("label", nameWithDisplayObject[key]);
-                modifyInput.setAttribute("value", fieldData);
-                cell.addEventListener("dblclick",
-                    function() {
-                        if (isModifying === false) {
-                            isModifying = true;
-                            display.style.display = "none";
-                            modifyInput.style.display = "block";
-                            modifyInput.focus();
-                        }
+                cell.addEventListener("dblclick", function() {
+                    if (isModifying) return;
+                    isModifying = true;
+                    display.style.display = "none";
+
+                    const modifyInput = document.createElement("mdui-text-field");
+                    modifyInput.setAttribute("variant", "filled");
+                    modifyInput.setAttribute("label", nameWithDisplayObject[key]);
+                    modifyInput.setAttribute("value", fieldData);
+
+                    modifyInput.addEventListener("blur", modify);
+
+                    modifyInput.addEventListener("keydown", function(event) {
+                        if (event.which === 13) modify.call(this);
+                    });
+
+                    setTimeout(() => {
+                        modifyInput.focus();
+                    }, 0);
+
+                    this.appendChild(modifyInput);
                 });
                 function modify() {
                     if (isAsking) return;
@@ -200,24 +253,18 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
                         onClosed: () =>{
                             isAsking = false;
                             isModifying = false;
-                            modifyInput.style.display = "none";
+                            this.remove();
                             display.style.display = "block";
                         }
                     });
                     } else {
                         isAsking = false;
                         isModifying = false;
-                        modifyInput.style.display = "none";
+                        this.remove();
                         display.style.display = "block";
                     }
                 }
-                modifyInput.addEventListener("blur", modify);
-                modifyInput.addEventListener("keydown",
-                    function(event) {
-                        if (event.which === 13) modify.call(this);
-                    });
                 cell.appendChild(display);
-                cell.appendChild(modifyInput);
             }
             currentRow.appendChild(cell);
         }
