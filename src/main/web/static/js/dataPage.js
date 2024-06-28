@@ -1,11 +1,12 @@
-// only isWriteable
+// only for isWriteable
 let isModifying = false;
 let isAsking = false;
 
 let isLoading = false;
 let isAllLoaded = false;
-
 let loadMaxByTop = undefined;
+
+let nextOffset = 0;
 
 window.addEventListener("contentPageChanged", function () {
     isModifying = false;
@@ -40,8 +41,10 @@ class CallbackQueue {
     }
 }
 
+const dataPageCallbackQueue = new CallbackQueue();
+
 /**
- * Need Compose DataPageBuild (Kotlin), it will create column to table and other thing...?
+ * Need Cooperate DataPageBuild (Kotlin || mba.vm.smart.parking.frontend), it will create column to table and other thing...?
  *
  * @param pageName
  * @param isWriteable
@@ -50,30 +53,24 @@ class CallbackQueue {
  */
 function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
     const layoutMain = document.querySelector(".layout-main");
-
-    let nextOffset = 0;
     const loadMaxRows = 15;
 
     const infoTheadMainTr = document.querySelector(`.${pageName}-thead`).children[0];
     const countTd = document.createElement("td");
 
-    const callbackQueue = new CallbackQueue();
-
     countTd.innerText = "#";
     countTd.classList.add(`.${pageName}-column`, `.${pageName}-column-count`);
     infoTheadMainTr.appendChild(countTd);
-    const keys = Object.keys(nameWithDisplayObject);
-    for (const key of keys) {
-        if (nameWithDisplayObject.hasOwnProperty(key)) {
-            const currentTd = document.createElement("td");
-            currentTd.classList.add(`.${pageName}-column`, `.${pageName}-column-${key}`);
-            currentTd.innerText = nameWithDisplayObject[key];
-            infoTheadMainTr.appendChild(currentTd);
-        }
-    }
+    Object.entries(nameWithDisplayObject).forEach(([key, value]) => {
+        const currentTd = document.createElement("td");
+        currentTd.classList.add(`${pageName}-column`, `${pageName}-column-${key}`);
+        currentTd.innerText = value;
+        infoTheadMainTr.appendChild(currentTd);
+    });
+
     if (isWriteable) {
         const methodTd = document.createElement("td");
-        methodTd.classList.add(`.${pageName}-column`, `.${pageName}-column-method`);
+        methodTd.classList.add(`${pageName}-column`, `${pageName}-column-method`);
         methodTd.innerText = "操作";
         infoTheadMainTr.appendChild(methodTd);
     }
@@ -81,7 +78,7 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
     function startLoad() {
         if (isAllLoaded || isLoading) return;
         isLoading = true;
-        callbackQueue.enqueue((done) => {
+        dataPageCallbackQueue.enqueue((done) => {
             function handleSuccess(res) {
                 const listData = res.data.list;
                 isAllLoaded = listData.length < loadMaxRows;
@@ -129,7 +126,7 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
         if (layoutMain.scrollHeight - layoutMain.clientHeight - 5 < 0 &&
             !isAllLoaded) {
             startLoad()
-            callbackQueue.enqueue((done) => {
+            dataPageCallbackQueue.enqueue((done) => {
                 _loadByMaxTop();
                 done();
             })
@@ -153,6 +150,36 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
                 }
             })
         })
+
+        function insertRow (obj) {
+            const requestData = {
+                type: dataType,
+                action: "INSERT",
+                data: {...obj}
+            }
+            sendRequest("POST", API_ROOT + "data", JSON.stringify(requestData),
+                function () {
+                    rowElement.remove();
+                    loadMaxByTop();
+                    reCount();
+                    window.mdui.snackbar({message: "删除成功!"});
+                }, function (res) {
+                    try {
+                        const responseData = JSON.parse(res.xhr.response);
+                        window.mdui.snackbar({
+                            message: "提交数据失败, 原因: " + responseData.message
+                        });
+                    } catch (e) {
+                        console.error(e);
+                        snakeBar({
+                            message: "与服务器连接出现问题，状态码: " + res.xhr.status
+                        });
+                    }
+                }, function () {
+                    dialog.open = false;
+                    isAsking = false;
+                },  "application/json")
+        }
 
         loadMaxByTop = _loadByMaxTop;
     }, 0);
@@ -179,67 +206,18 @@ function getDataArray(dataType, extra, limit, offset, ifError) {
     );
 }
 
-function modifyCell(pageName, targetID, line, key, value, keyDisplay, displayElement, input, dataType) {
-    if (isAsking) return;
-    isAsking = true;
-    const data = {
-        type: dataType,
-        action: "UPDATE",
-        data: {
-            id: targetID,
-        }
-    };
-    data.data[key] = value;
-    const dialog = document.querySelector(`.data-modify-ask-dialog-${pageName}`);
-    const confirmButton = dialog.querySelector(".dialog-button-confirm");
 
-    dialog.setAttribute("headline", "提示:");
-    dialog.setAttribute("description", `当前文本框 (第 ${line} 行 - ${keyDisplay}) 已修改，是否保存?`);
-
-    function confirmCLickEvent() {
-            sendRequest("POST", API_ROOT + "data", JSON.stringify(data),
-                function () {
-                    window.mdui.snackbar({
-                        message: "修改成功"
-                    });
-                    displayElement.innerText = value;
-                },
-                function (res) {
-                    try {
-                        const responseData = JSON.parse(res.xhr.response);
-                        window.mdui.snackbar({
-                            message: "提交数据失败, 原因: " + responseData.message
-                        });
-                    } catch (e) {
-                        console.error(e);
-                        snakeBar({
-                            message: "与服务器连接出现问题，状态码: " + res.xhr.status
-                        });
-                    }
-                },
-                function () {
-                    isAsking = false;
-                    isModifying = false;
-                    dialog.open = false;
-                },
-                "application/json"
-            );
-    }
-
-    confirmButton.addEventListener("click", confirmCLickEvent, { once: true });
-    dialog.addEventListener("close", function () {
-        displayElement.style.display = "block";
-        input.remove();
-        confirmButton.removeEventListener("click", confirmCLickEvent);
-    }, { once: true })
-    dialog.open = true;
-    setTimeout(function () {
-        confirmButton.focus();
-    }, 0);
-}
-
-
-
+/**
+ *  插入数据， 以及配置相关事件
+ *
+ * @param isWriteable 当前用户是否可写
+ * @param dataArray 数据数组
+ * @param tableBody 表内容元素
+ * @param nameWithDisplayObject 包含每个列的 MAP
+ * @param pageName 当前页面名称，用于确定元素的 class Name
+ * @param countStartAt 计数开始于 ?
+ * @param dataType 数据类型，发送 request 时使用
+ */
 function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObject, pageName, countStartAt, dataType) {
     let count = countStartAt || 0;
     for (const item of dataArray) {
@@ -280,18 +258,17 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
                     display.style.display = "none";
 
                     const modify = function () {
-                        const value = $(this).val();
+                        // const value = $(this).val();
+                        const value = this.value;
                         if (value !== fieldData) {
                             modifyCell(
-                                pageName,
                                 item.id,
                                 currentCount,
                                 key,
                                 value,
                                 nameWithDisplayObject[key],
                                 display,
-                                this,
-                                dataType
+                                this
                             )
                         } else {
                             display.style.display = "block";
@@ -351,7 +328,7 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
         tableBody.appendChild(currentRow);
     }
 
-    function deleteRow(id, count, rowElement, dataType, pageName) {
+    function deleteRow(id, count, rowElement, dataType) {
         const dialog = document.querySelector(`.data-modify-ask-dialog-${pageName}`);
         const confirmButton = dialog.querySelector(".dialog-button-confirm");
         dialog.setAttribute("headline", "提示:");
@@ -369,14 +346,18 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
             sendRequest("POST", API_ROOT + "data", JSON.stringify(requestData),
                 function () {
                     rowElement.remove();
+                    nextOffset--;
                     loadMaxByTop();
-                    reCount(pageName);
+                    dataPageCallbackQueue.enqueue((done) => {
+                        reCount();
+                        done();
+                    });
                     window.mdui.snackbar({message: "删除成功!"});
                 }, function (res) {
                     try {
                         const responseData = JSON.parse(res.xhr.response);
                         window.mdui.snackbar({
-                            message: "提交数据失败, 原因: " + responseData.message
+                            message: `提交数据失败, 原因: ${responseData.message} \n 可能是数据已经被删除过了, 刷新页面后重新检查?`
                         });
                     } catch (e) {
                         console.error(e);
@@ -397,16 +378,131 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
         }, {once: true});
         isAsking = true;
         dialog.open = true;
+        setTimeout(function () {
+            confirmButton.focus();
+        }, 0);
     }
 
-    function reCount(pageName) {
-        const countElementArray = document.querySelectorAll(`.${pageName}-cell-count`);
-        for (let i = 0; i < countElementArray.length; i++) {
-            countElementArray[i].innerText = i + 1;
+    function reCount() {
+        document.querySelectorAll(`.${pageName}-cell-count`).forEach((cell, index) => {
+            cell.innerText = index + 1;
+        });
+        document.querySelectorAll(`.${pageName}-row`).forEach((row, index) => {
+            const countPrefix = `${pageName}-row-count-`;
+            const classesToRemove = [];
+            const newCount = index + 1;
+
+            for (const className of row.classList) {
+                if (className.startsWith(countPrefix) && !isNaN(className.slice(countPrefix.length))) {
+                    if (className === `${pageName}-row-count-${newCount}`) return;
+                    classesToRemove.push(className);
+                } else if (className === `${pageName}-row-odd`) {
+                    classesToRemove.push(className);
+                } else if (className === `${pageName}-row-even`) {
+                    classesToRemove.push(className);
+                }
+            }
+
+            for (const className of classesToRemove) {
+                row.classList.remove(className);
+            }
+
+            row.classList.add(
+                `${pageName}-row-count-${newCount}`,
+                newCount % 2 === 0 ? `${pageName}-row-even` : `${pageName}-row-odd`
+            )
+        });
+    }
+
+    function modifyCell(targetID, line, key, value, keyDisplay, displayElement, input) {
+        if (isAsking) return;
+        isAsking = true;
+        const data = {
+            type: dataType,
+            action: "UPDATE",
+            data: {
+                id: targetID,
+            }
+        };
+        data.data[key] = value;
+        const dialog = document.querySelector(`.data-modify-ask-dialog-${pageName}`);
+        const confirmButton = dialog.querySelector(".dialog-button-confirm");
+
+        dialog.setAttribute("headline", "提示:");
+        dialog.setAttribute("description", `当前文本框 (第 ${line} 行 - ${keyDisplay}) 已修改，是否保存?`);
+
+        function confirmCLickEvent() {
+            sendRequest("POST", API_ROOT + "data", JSON.stringify(data),
+                function () {
+                    window.mdui.snackbar({
+                        message: "修改成功"
+                    });
+                    displayElement.innerText = value;
+                },
+                function (res) {
+                    try {
+                        const responseData = JSON.parse(res.xhr.response);
+                        window.mdui.snackbar({
+                            message: "提交数据失败, 原因: " + responseData.message
+                        });
+                    } catch (e) {
+                        console.error(e);
+                        snakeBar({
+                            message: "与服务器连接出现问题，状态码: " + res.xhr.status
+                        });
+                    }
+                },
+                function () {
+                    dialog.open = false;
+                },
+                "application/json"
+            );
         }
+
+        confirmButton.addEventListener("click", confirmCLickEvent, { once: true });
+        dialog.addEventListener("close", function () {
+            isAsking = false;
+            isModifying = false;
+            displayElement.style.display = "block";
+            input.remove();
+            confirmButton.removeEventListener("click", confirmCLickEvent);
+        }, { once: true })
+        dialog.open = true;
+        setTimeout(function () {
+            confirmButton.focus();
+        }, 0);
     }
+}
 
-    function insertNewRow() {}
+function inputDialog(pageName, diaLogHeadLine, dialogDescription, confirmCallBack, defaultValues) {
+    const dialog = document.querySelector(`.data-modify-dialog-${pageName}`);
+    const inputArray = dialog.querySelectorAll(".data-modify-dialog-field");
+    const confirmButton = dialog.querySelector(".dialog-button-confirm");
+    dialog.setAttribute("headline", diaLogHeadLine);
+    dialog.setAttribute("description", dialogDescription);
+    confirmButton.addEventListener("click", confirmCallBack, {once: true});
 
-    function modifyRow() {}
+    if (inputArray !== undefined && inputArray.length === defaultValues.length) {
+        inputArray.forEach((input, index) => {
+            input.value = defaultValues[index];
+        });
+    }
+    function callback() {
+        confirmCallBack(inputArray.map(input => input.value));
+    }
+    confirmButton.addEventListener("click", callback);
+    dialog.addEventListener("close", () => {
+        isAsking = false;
+        isModifying = false;
+        confirmButton.removeEventListener("click", callback)
+        setTimeout(function () {
+            inputArray.forEach(element => {
+                element.value = '';
+            });
+        }, 0);
+    });
+    dialog.open = true;
+    setTimeout(function () {
+        dialog.querySelector(".data-modify-dialog-field").focus();
+    }, 0);
 }

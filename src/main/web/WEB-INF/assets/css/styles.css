@@ -1,6 +1,5 @@
 :root {
-    --mdui-motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
-    --mdui-motion-duration-short1: 40ms;
+
 }
 
 :not(:defined) {

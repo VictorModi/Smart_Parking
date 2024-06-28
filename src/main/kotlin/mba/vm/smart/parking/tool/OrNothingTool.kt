@@ -10,7 +10,7 @@ import mba.vm.smart.parking.frontend.ui.HTMLElement
  * @date 2024/6/25 上午12:26
  */
 object OrNothingTool {
-    fun StringBuilder.appendOrNothing(bool: Boolean, s: String): StringBuilder {
+    fun StringBuilder.appendOrNothing(bool: Boolean, s: Any): StringBuilder {
         if (bool) this.append(s)
         return this
     }

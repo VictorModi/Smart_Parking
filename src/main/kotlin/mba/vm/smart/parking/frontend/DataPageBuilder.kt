@@ -58,10 +58,18 @@ data class DataPageBuilder(
             handlerMap[dataType]?.getAccessLevel(UserType.getUserTypeByInt(it.first.permission_level))
         } ?: BaseDataHandler.AccessLevel.NO_ACCESS
         val sb = StringBuilder()
+        sb.append(
+            HTMLElement("style")
+                .setContent("""
+                    .$pageName-row-odd {
+                        background-color: rgb(var(--mdui-color-surface-container-low));
+                    }
+                """.trimIndent())
+        )
         sb.appendOrNothing(notAllowDirect, HTMLElement("script").setContent("""
             alert("Wrong access method.");
             window.location = "${request.contextPath}/#$pageName"
-        """.trimIndent()).toString())
+        """.trimIndent()))
         var isWritable = false;
         val nameWithDisplayObject = Gson().toJson(keyDisplayNameMap)
         val scriptString: String = when (accessLevel) {
