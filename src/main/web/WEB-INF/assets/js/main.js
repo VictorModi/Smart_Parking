@@ -70,7 +70,7 @@ $(document).one('DOMContentLoaded', function() {
         }
         const url = 'content/' + section + '.jsp';
         const layoutMain = $(".layout-main");
-        const loadFailedHTML = `<h1>加载失败!</h1>你可以 <a href="#${section}" onclick="location.reload()">刷新</a> 或者 <a href="#">回到首页</a> 。`
+        const loadFailedHTML = `<h1>加载失败!</h1>你可以 <a href="javascript:;" onclick="location.reload()">刷新</a> 或者 <a href="#">回到首页</a> 。`
 
         collapse.attr("disabled", '');
         allCollapseItems.attr("disabled", '');

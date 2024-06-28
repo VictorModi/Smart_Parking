@@ -7,7 +7,8 @@ import mba.vm.smart.parking.data.DataRequest
 import mba.vm.smart.parking.data.DataRequest.Companion.handlerMap
 import mba.vm.smart.parking.data.handler.BaseDataHandler
 import mba.vm.smart.parking.frontend.ui.HTMLElement
-import mba.vm.smart.parking.tool.StringBuilderTool.appendOrNothing
+import mba.vm.smart.parking.tool.OrNothingTool.addChildOrNothing
+import mba.vm.smart.parking.tool.OrNothingTool.appendOrNothing
 import mba.vm.smart.parking.tool.UserLoginTool.getUserByRequest
 import org.owasp.encoder.Encode
 import java.util.*
@@ -57,13 +58,11 @@ data class DataPageBuilder(
             handlerMap[dataType]?.getAccessLevel(UserType.getUserTypeByInt(it.first.permission_level))
         } ?: BaseDataHandler.AccessLevel.NO_ACCESS
         val sb = StringBuilder()
-        if (notAllowDirect) {
-            val warnScript: HTMLElement = HTMLElement("script").setContent("""
-                alert("Wrong access method.");
-                window.location = "${request.contextPath}/#$pageName"
-            """.trimIndent())
-            sb.append(warnScript)
-        }
+        sb.appendOrNothing(notAllowDirect, HTMLElement("script").setContent("""
+            alert("Wrong access method.");
+            window.location = "${request.contextPath}/#$pageName"
+        """.trimIndent()).toString())
+        var isWritable = false;
         val nameWithDisplayObject = Gson().toJson(keyDisplayNameMap)
         val scriptString: String = when (accessLevel) {
             BaseDataHandler.AccessLevel.READ -> {
@@ -71,6 +70,7 @@ data class DataPageBuilder(
             }
 
             BaseDataHandler.AccessLevel.WRITE -> {
+                isWritable = true
                 "setDataPage(\"$pageName\", true, $nameWithDisplayObject, \"$dataType\");"
             }
 
@@ -85,8 +85,68 @@ data class DataPageBuilder(
                 return sb.toString()
             }
         }
+        val dataModifyDialog: HTMLElement by lazy {
+            HTMLElement("mdui-dialog")
+                .addClass("data-modify-dialog")
+                .addClass("data-modify-dialog-$pageName")
+                .setAttribute("close-on-esc", "")
+        }
+        val dataModifyAskDialog: HTMLElement by lazy {
+            HTMLElement("mdui-dialog")
+                .addClass("data-modify-ask-dialog")
+                .addClass("data-modify-ask-dialog-$pageName")
+                .setAttribute("close-on-esc", "")
+        }
+        val insertRowButton: HTMLElement by lazy {
+            HTMLElement("mdui-button")
+                .addClass("data-page-insert-button")
+                .addClass("data-page-insert-button-$pageName")
+                .setContent("插入")
+        }
+        if (isWritable) {
+            val cancelButton = HTMLElement("mdui-button")
+                .addClass("dialog-button")
+                .setAttribute("slot","action")
+                .setAttribute("variant", "text")
+                .addClass("dialog-button-cancel")
+                .setContent("取消")
+
+            val confirmButton = HTMLElement("mdui-button")
+                .addClass("dialog-button")
+                .setAttribute("slot","action")
+                .setAttribute("variant", "filled")
+                .addClass("dialog-button-confirm")
+                .setContent("确定")
+
+            dataModifyAskDialog
+                .addChild(cancelButton)
+                .addChild(confirmButton)
+
+            for (key in keyDisplayNameMap.keys) {
+                val textField = HTMLElement("mdui-text-field")
+                textField
+                    .addClass("data-modify-dialog-field")
+                    .addClass("data-modify-dialog-field-$key")
+                    .setAttribute("variant", "filled")
+                    .setAttribute("label", keyDisplayNameMap[key]!!)
+                dataModifyDialog.addChild(textField)
+            }
+            dataModifyDialog
+                .addChild(cancelButton)
+                .addChild(confirmButton)
+            sb.append(dataModifyDialog, dataModifyAskDialog)
+        }
         val aioElement: HTMLElement = HTMLElement("div").addChild(
-            HTMLElement("h1").setContent(Encode.forHtml(pageTitle))
+            HTMLElement("div")
+                .addClass("data-page-title-container")
+                .addClass("data-page-title-container-$pageName")
+                .addChild(
+                    HTMLElement("h1")
+                        .addClass("data-page-title-display")
+                        .addClass("data-page-title-display-$pageName")
+                        .setContent(Encode.forHtml(pageTitle))
+                )
+                .addChildOrNothing(isWritable, insertRowButton)
         ).addChild(
             HTMLElement("div").addClass("mdui-table").addChild(
                 HTMLElement("table").addChild(
@@ -97,6 +157,11 @@ data class DataPageBuilder(
                     HTMLElement("tbody").addClass("$pageName-tbody")
                 )
             )
+        ).addChild(
+            HTMLElement("div")
+                .addClass("data-page-bottom-placeholder")
+                .addClass("data-page-bottom-placeholder-$pageName")
+                .setContent("----- 我是有底线的 (￣へ￣) -----")
         )
         sb.append(aioElement)
         val javaScript: HTMLElement = HTMLElement("script").addClass("need-load")

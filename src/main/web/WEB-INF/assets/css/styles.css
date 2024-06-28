@@ -115,35 +115,6 @@ mdui-navigation-drawer {
     }
 }
 
-@keyframes progressBarLoading {
-    0% {
-        background-color: #2a83a2;
-        width: 0;
-    }
-    50% {
-        width: 75%;
-    }
-    85% {
-        width: 95%;
-    }
-    100% {
-        background-color: #88cb7f;
-        width: 99.5%;
-    }
-}
-
-.progress-bar-loading {
-    animation: progressBarLoading 15s forwards;
-}
-
-.progress-bar-complied {
-    background-color: #88cb7f;
-}
-
-.progress-bar-failed {
-    background-color: red;
-}
-
 .fade-in {
     animation: fadeIn 2s ease forwards;
 }
@@ -167,4 +138,33 @@ a {
 
 a:hover {
     color: #4c6cb3;
+}
+
+.data-modify-dialog > * {
+    margin-bottom: 10px;
+}
+
+.data-page-bottom-placeholder {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 35px;
+}
+
+.modify-or-delete-cell {
+    align-items: center;
+}
+
+.modify-or-delete-cell > * {
+    margin-right: 10px;
+}
+
+.modify-or-delete-cell:last-child {
+    margin-right: 0;
+}
+
+.data-page-title-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }

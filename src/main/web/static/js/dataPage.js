@@ -2,12 +2,17 @@
 let isModifying = false;
 let isAsking = false;
 
+let isLoading = false;
 let isAllLoaded = false;
+
+let loadMaxByTop = undefined;
 
 window.addEventListener("contentPageChanged", function () {
     isModifying = false;
     isAsking = false;
+    isLoading = false;
     isAllLoaded = false
+    loadMaxByTop = undefined;
 });
 
 class CallbackQueue {
@@ -66,32 +71,42 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
             infoTheadMainTr.appendChild(currentTd);
         }
     }
-
+    if (isWriteable) {
+        const methodTd = document.createElement("td");
+        methodTd.classList.add(`.${pageName}-column`, `.${pageName}-column-method`);
+        methodTd.innerText = "操作";
+        infoTheadMainTr.appendChild(methodTd);
+    }
     const tableBody = document.querySelector(`.${pageName}-tbody`);
     function startLoad() {
-        if (isAllLoaded) return;
+        if (isAllLoaded || isLoading) return;
+        isLoading = true;
         callbackQueue.enqueue((done) => {
             function handleSuccess(res) {
                 const listData = res.data.list;
                 isAllLoaded = listData.length < loadMaxRows;
                 if (isAllLoaded) window.mdui.snackbar({ message: "已经到底啦" });
-                insertDataToTable(isWriteable, listData, tableBody, nameWithDisplayObject, pageName, nextOffset);
+                insertDataToTable(isWriteable, listData, tableBody, nameWithDisplayObject, pageName, nextOffset, dataType);
                 nextOffset += loadMaxRows;
             }
 
-            function handleFailure(res) {
-                console.log(res);
-                let errorMessage = "与服务器连接出现问题";
-                if (res.xhr) {
-                    errorMessage += "，状态码: " + res.xhr.status;
-                }
-                window.mdui.snackbar({ message: errorMessage });
-            }
-
-            getDataArray(dataType, undefined, loadMaxRows, nextOffset)
+            getDataArray(dataType, undefined, loadMaxRows, nextOffset,
+                function (res) {
+                    try {
+                        const data = JSON.parse(res.xhr.response);
+                        snakeBar({
+                            message: "获取数据失败, 原因: " + data["message"]
+                        });
+                    } catch(e) {
+                        console.error(e);
+                        snakeBar({
+                            message: "与服务器连接出现问题，状态码: " + res.xhr.status
+                        });
+                    }
+                })
                 .then(handleSuccess)
-                .catch(handleFailure)
                 .finally(() => {
+                    isLoading = false;
                     done();
                 });
         });
@@ -99,39 +114,51 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
 
     function loadMore() {
         if (isAllLoaded) {
-            document.querySelector(".layout-main").removeEventListener("scroll", loadMore);
-            return -1;
+            layoutMain.removeEventListener("scroll", loadMore);
+            return
         }
         const startLoadScrollTop = this.scrollHeight - this.clientHeight - 5;
         const aboutScrollTop = Math.round(this.scrollTop);
         const isChecked = aboutScrollTop > startLoadScrollTop ||
             (startLoadScrollTop === 0 && aboutScrollTop === 0);
         if (isChecked) startLoad();
-        return isChecked ? 1 : 0;
     }
     layoutMain.addEventListener("scroll", loadMore);
 
-    function loadByMaxTop() {
+    function _loadByMaxTop() {
         if (layoutMain.scrollHeight - layoutMain.clientHeight - 5 < 0 &&
             !isAllLoaded) {
             startLoad()
             callbackQueue.enqueue((done) => {
-                loadByMaxTop();
+                _loadByMaxTop();
                 done();
             })
         }
     }
 
     setTimeout(function () {
-        loadByMaxTop();
+        _loadByMaxTop();
         window.addEventListener("contentPageChanged", function () {
             layoutMain.removeEventListener("scroll", loadMore)
             console.log(`${pageName} scroll Listener is removed.`);
         }, {once: true});
+
+        document.querySelectorAll(".dialog-button-cancel").forEach(cancelButton => {
+            cancelButton.addEventListener("click", (event) => {
+                const _this = event.target;
+                if (_this.parentElement) {
+                    _this.parentElement.open = false;
+                    isModifying = false;
+                    isAsking = false;
+                }
+            })
+        })
+
+        loadMaxByTop = _loadByMaxTop;
     }, 0);
 }
 
-function getDataArray(dataType, extra, limit, offset) {
+function getDataArray(dataType, extra, limit, offset, ifError) {
     const requestData = {
         type: dataType,
         action: "SELECT",
@@ -146,13 +173,74 @@ function getDataArray(dataType, extra, limit, offset) {
         API_ROOT + "data",
         JSON.stringify(requestData),
         undefined,
-        undefined,
+        ifError,
         undefined,
         "application/json"
     );
 }
 
-function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObject, pageName, countStartAt) {
+function modifyCell(pageName, targetID, line, key, value, keyDisplay, displayElement, input, dataType) {
+    if (isAsking) return;
+    isAsking = true;
+    const data = {
+        type: dataType,
+        action: "UPDATE",
+        data: {
+            id: targetID,
+        }
+    };
+    data.data[key] = value;
+    const dialog = document.querySelector(`.data-modify-ask-dialog-${pageName}`);
+    const confirmButton = dialog.querySelector(".dialog-button-confirm");
+
+    dialog.setAttribute("headline", "提示:");
+    dialog.setAttribute("description", `当前文本框 (第 ${line} 行 - ${keyDisplay}) 已修改，是否保存?`);
+
+    function confirmCLickEvent() {
+            sendRequest("POST", API_ROOT + "data", JSON.stringify(data),
+                function () {
+                    window.mdui.snackbar({
+                        message: "修改成功"
+                    });
+                    displayElement.innerText = value;
+                },
+                function (res) {
+                    try {
+                        const responseData = JSON.parse(res.xhr.response);
+                        window.mdui.snackbar({
+                            message: "提交数据失败, 原因: " + responseData.message
+                        });
+                    } catch (e) {
+                        console.error(e);
+                        snakeBar({
+                            message: "与服务器连接出现问题，状态码: " + res.xhr.status
+                        });
+                    }
+                },
+                function () {
+                    isAsking = false;
+                    isModifying = false;
+                    dialog.open = false;
+                },
+                "application/json"
+            );
+    }
+
+    confirmButton.addEventListener("click", confirmCLickEvent, { once: true });
+    dialog.addEventListener("close", function () {
+        displayElement.style.display = "block";
+        input.remove();
+        confirmButton.removeEventListener("click", confirmCLickEvent);
+    }, { once: true })
+    dialog.open = true;
+    setTimeout(function () {
+        confirmButton.focus();
+    }, 0);
+}
+
+
+
+function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObject, pageName, countStartAt, dataType) {
     let count = countStartAt || 0;
     for (const item of dataArray) {
         count++;
@@ -167,6 +255,10 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
                 `${pageName}-row-odd`
         );
         const countCell = document.createElement("td");
+        countCell.classList.add(
+            `${pageName}-cell`,
+            `${pageName}-cell-count`,
+        )
         countCell.innerText = currentCount;
         currentRow.appendChild(countCell);
         for (const key of Object.keys(nameWithDisplayObject)) {
@@ -187,10 +279,32 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
                     isModifying = true;
                     display.style.display = "none";
 
+                    const modify = function () {
+                        const value = $(this).val();
+                        if (value !== fieldData) {
+                            modifyCell(
+                                pageName,
+                                item.id,
+                                currentCount,
+                                key,
+                                value,
+                                nameWithDisplayObject[key],
+                                display,
+                                this,
+                                dataType
+                            )
+                        } else {
+                            display.style.display = "block";
+                            this.remove();
+                            isModifying = false;
+                            isAsking = false;
+                        }
+                    }
+
                     const modifyInput = document.createElement("mdui-text-field");
                     modifyInput.setAttribute("variant", "filled");
                     modifyInput.setAttribute("label", nameWithDisplayObject[key]);
-                    modifyInput.setAttribute("value", fieldData);
+                    modifyInput.setAttribute("value", display.innerText);
 
                     modifyInput.addEventListener("blur", modify);
 
@@ -204,70 +318,95 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
 
                     this.appendChild(modifyInput);
                 });
-                function modify() {
-                    if (isAsking) return;
-                    isAsking = true;
-                    const currentValue = $(this).val();
-                    if (currentValue !== display.textContent) {
-                        window.mdui.dialog({
-                            headline: "提示",
-                            description: "当前文本框 (" + "第 " + currentCount + " 行 - " + nameWithDisplayObject[key] + ") 已修改, 是否保存?",
-                            actions: [{
-                                text: "取消",
-                            },
-                                {
-                                    text: "确定",
-                                    onClick: () =>{
-                                    // display.innerText = currentValue;
-                                    const data = {
-                                        "type": "CAR",
-                                        "action": "UPDATE",
-                                        "data": {
-                                            "id": item["id"]
-                                        }
-                                    }
-                                    data.data[key] = currentValue;
-                                    sendRequest("POST", API_ROOT + "data", JSON.stringify(data),
-                                    function() {
-                                        window.mdui.snackbar({
-                                            message: "修改成功"
-                                        });
-                                        display.innerText = currentValue;
-                                    },
-                                    function(res) {
-                                        try {
-                                            const data = JSON.parse(res.xhr.response);
-                                            snakeBar({
-                                                message: "提交数据失败, 原因: " + data["message"]
-                                            });
-                                        } catch(e) {
-                                            console.error(e);
-                                            snakeBar({
-                                                message: "与服务器连接出现问题，状态码: " + res.xhr.status
-                                            });
-                                        }
-                                    },
-                                    undefined, "application/json")
-                    },
-                    }],
-                        onClosed: () =>{
-                            isAsking = false;
-                            isModifying = false;
-                            this.remove();
-                            display.style.display = "block";
-                        }
-                    });
-                    } else {
-                        isAsking = false;
-                        isModifying = false;
-                        this.remove();
-                        display.style.display = "block";
-                    }
-                }
                 cell.appendChild(display);
             }
             currentRow.appendChild(cell);
         }
+        if (isWriteable) {
+            const modifyOrDeleteCell = document.createElement("td");
+            modifyOrDeleteCell.classList.add(
+                "modify-or-delete-cell",
+                `modify-or-delete-cell-${pageName}`
+            );
+            const modifyLink = document.createElement("a");
+            const deleteLink = document.createElement("a");
+
+            modifyLink.setAttribute("href", "javascript:;");
+            deleteLink.setAttribute("href", "javascript:;");
+
+            modifyLink.innerText = "修改";
+            deleteLink.innerText = "删除";
+
+            modifyLink.addEventListener("click", () => {
+
+            });
+
+            deleteLink.addEventListener("click", () => {
+                deleteRow(item.id, currentCount, currentRow, dataType, pageName);
+            });
+            modifyOrDeleteCell.appendChild(modifyLink);
+            modifyOrDeleteCell.appendChild(deleteLink);
+            currentRow.appendChild(modifyOrDeleteCell);
+        }
         tableBody.appendChild(currentRow);
     }
+
+    function deleteRow(id, count, rowElement, dataType, pageName) {
+        const dialog = document.querySelector(`.data-modify-ask-dialog-${pageName}`);
+        const confirmButton = dialog.querySelector(".dialog-button-confirm");
+        dialog.setAttribute("headline", "提示:");
+        dialog.setAttribute("description", `你确定要删除 ${count} 行的数据吗?(无法恢复!)`);
+
+        function confirmButtonClickEvent() {
+            const requestData = {
+                type: dataType,
+                action: "DELETE",
+                data: {
+                    id: id,
+                }
+            };
+
+            sendRequest("POST", API_ROOT + "data", JSON.stringify(requestData),
+                function () {
+                    rowElement.remove();
+                    loadMaxByTop();
+                    reCount(pageName);
+                    window.mdui.snackbar({message: "删除成功!"});
+                }, function (res) {
+                    try {
+                        const responseData = JSON.parse(res.xhr.response);
+                        window.mdui.snackbar({
+                            message: "提交数据失败, 原因: " + responseData.message
+                        });
+                    } catch (e) {
+                        console.error(e);
+                        snakeBar({
+                            message: "与服务器连接出现问题，状态码: " + res.xhr.status
+                        });
+                    }
+                }, function () {
+                    dialog.open = false;
+                    isAsking = false;
+                },  "application/json")
+        }
+
+        confirmButton.addEventListener("click", confirmButtonClickEvent, {once: true});
+        dialog.addEventListener("close", function () {
+            confirmButton.removeEventListener("click", confirmButtonClickEvent);
+            isAsking = false;
+        }, {once: true});
+        isAsking = true;
+        dialog.open = true;
+    }
+
+    function reCount(pageName) {
+        const countElementArray = document.querySelectorAll(`.${pageName}-cell-count`);
+        for (let i = 0; i < countElementArray.length; i++) {
+            countElementArray[i].innerText = i + 1;
+        }
+    }
+
+    function insertNewRow() {}
+
+    function modifyRow() {}
 }

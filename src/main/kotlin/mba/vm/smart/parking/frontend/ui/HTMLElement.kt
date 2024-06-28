@@ -40,12 +40,26 @@ data class HTMLElement(
     }
 
     /**
+     * 设置HTML元素的无值属性。
+     * @param attributeName 属性的名称。
+     * @throws IllegalArgumentException 如果attributeName为"class"。
+     * @return 用于链式调用的HTMLElement实例本身。
+     */
+    fun setAttribute(attributeName: String): HTMLElement {
+        return setAttribute(attributeName, "")
+    }
+
+    /**
      * 获取指定属性的值。
      * @param attributeName 属性的名称。
      * @return 属性的值，如果未找到属性则返回null。
      */
     fun getAttribute(attributeName: String): String? {
         return attributes[attributeName]
+    }
+
+    fun getAttributes(): MutableMap<String, String> {
+        return attributes
     }
 
 
@@ -87,7 +101,7 @@ data class HTMLElement(
      * 获取与HTML元素关联的类名列表。
      * @return 类名列表。
      */
-    fun getClassList(): List<String> {
+    fun getClassList(): MutableList<String> {
         return classList
     }
 
