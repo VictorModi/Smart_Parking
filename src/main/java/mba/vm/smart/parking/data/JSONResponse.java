@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  * SmartParking - mba.vm.smart.parking.data
  *
  * @author VictorModi
- * @description TODO: coming soon.
+ * @description https://github.com/VictorModi/Smart_Parking
  * @email victormodi@outlook.com
  * @date 2024/6/2 上午1:34
  */

@@ -5,7 +5,7 @@ import jakarta.servlet.ServletContextListener
 
 /**
  * SmartParking - mba.vm.smart.parking
- * @description TODO: coming soon.
+ * @description https://github.com/VictorModi/Smart_Parking
  * @author VictorModi
  * @email victormodi@outlook.com
  * @date 2024/6/2 下午12:40

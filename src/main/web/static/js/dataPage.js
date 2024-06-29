@@ -222,6 +222,7 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
         const filterButton = document.querySelector(`.data-page-filter-button-${pageName}`);
         if (isFiltered) {
             filterButton.setAttribute("icon", "filter_alt--rounded");
+            filterButton.parentElement.setAttribute("content", "筛选器 (已开启)")
         }
         function filter(obj) {
             Object.entries(obj).forEach(([key, value]) => {

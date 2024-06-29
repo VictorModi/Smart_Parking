@@ -2,7 +2,7 @@ package mba.vm.smart.parking.data
 
 /**
  * SmartParking - mba.vm.smart.parking.data
- * @description TODO: coming soon.
+ * @description https://github.com/VictorModi/Smart_Parking
  * @author VictorModi
  * @email victormodi@outlook.com
  * @date 2024/6/21 上午9:00

@@ -8,7 +8,7 @@ import javax.sql.DataSource
 
 /**
  * SmartParking - mba.vm.smart.parking
- * @description TODO: coming soon.
+ * @description https://github.com/VictorModi/Smart_Parking
  * @author VictorModi
  * @email victormodi@outlook.com
  * @date 2024/6/3 下午4:16

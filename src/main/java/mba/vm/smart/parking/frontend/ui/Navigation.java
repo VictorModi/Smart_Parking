@@ -13,7 +13,7 @@ import static mba.vm.smart.parking.util.ContentFetch.escapeHtml;
  * SmartParking - mba.vm.smart.parking.object.ui
  *
  * @author VictorModi
- * @description TODO: coming soon.
+ * @description https://github.com/VictorModi/Smart_Parking
  * @email victormodi@outlook.com
  * @date 2024/6/1 下午2:42
  */

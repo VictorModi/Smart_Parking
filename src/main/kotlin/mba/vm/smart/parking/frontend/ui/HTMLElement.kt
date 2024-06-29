@@ -2,7 +2,7 @@ package mba.vm.smart.parking.frontend.ui
 
 /**
  * SmartParking - mba.vm.smart.parking.frontend.ui
- * @description TODO: coming soon.
+ * @description https://github.com/VictorModi/Smart_Parking
  * @author VictorModi
  * @email victormodi@outlook.com
  * @date 2024/6/22 下午6:29

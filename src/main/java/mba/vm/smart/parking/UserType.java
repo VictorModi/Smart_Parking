@@ -6,7 +6,7 @@ import lombok.Getter;
  * SmartParking - mba.vm.smart.parking
  *
  * @author VictorModi
- * @description TODO: coming soon.
+ * @description https://github.com/VictorModi/Smart_Parking
  * @email victormodi@outlook.com
  * @date 2024/6/5 下午6:08
  */

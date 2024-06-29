@@ -8,7 +8,7 @@ import java.io.InputStreamReader
 
 /**
  * SmartParking - mba.vm.smart.parking.tool
- * @description TODO: coming soon.
+ * @description https://github.com/VictorModi/Smart_Parking
  * @author VictorModi
  * @email victormodi@outlook.com
  * @date 2024/6/20 下午7:34

@@ -15,7 +15,7 @@ import java.util.*
 
 /**
  * SmartParking - mba.vm.smart.parking.frontend
- * @description TODO: coming soon.
+ * @description https://github.com/VictorModi/Smart_Parking
  * @author VictorModi
  * @email victormodi@outlook.com
  * @date 2024/6/22 下午6:25
@@ -113,40 +113,38 @@ data class DataPageBuilder(
                 .addClass("data-page-insert-button-$pageName")
                 .setContent("插入")
         }
-        if (isWritable) {
-            val cancelButton = HTMLElement("mdui-button")
-                .addClass("dialog-button")
-                .setAttribute("slot","action")
-                .setAttribute("variant", "text")
-                .addClass("dialog-button-cancel")
-                .setContent("取消")
+        val cancelButton = HTMLElement("mdui-button")
+            .addClass("dialog-button")
+            .setAttribute("slot","action")
+            .setAttribute("variant", "text")
+            .addClass("dialog-button-cancel")
+            .setContent("取消")
 
-            val confirmButton = HTMLElement("mdui-button")
-                .addClass("dialog-button")
-                .setAttribute("slot","action")
+        val confirmButton = HTMLElement("mdui-button")
+            .addClass("dialog-button")
+            .setAttribute("slot","action")
+            .setAttribute("variant", "filled")
+            .addClass("dialog-button-confirm")
+            .setContent("确定")
+
+        dataModifyAskDialog
+            .addChild(cancelButton)
+            .addChild(confirmButton)
+
+        for (key in keyDisplayNameMap.keys) {
+            val textField = HTMLElement("mdui-text-field")
+            textField
+                .addClass("data-modify-dialog-field")
+                .addClass("data-modify-dialog-field-$key")
+                .setAttribute("data-key", key)
                 .setAttribute("variant", "filled")
-                .addClass("dialog-button-confirm")
-                .setContent("确定")
-
-            dataModifyAskDialog
-                .addChild(cancelButton)
-                .addChild(confirmButton)
-
-            for (key in keyDisplayNameMap.keys) {
-                val textField = HTMLElement("mdui-text-field")
-                textField
-                    .addClass("data-modify-dialog-field")
-                    .addClass("data-modify-dialog-field-$key")
-                    .setAttribute("data-key", key)
-                    .setAttribute("variant", "filled")
-                    .setAttribute("label", keyDisplayNameMap[key]!!)
-                dataModifyDialog.addChild(textField)
-            }
-            dataModifyDialog
-                .addChild(cancelButton)
-                .addChild(confirmButton)
-            sb.append(dataModifyDialog, dataModifyAskDialog)
+                .setAttribute("label", keyDisplayNameMap[key]!!)
+            dataModifyDialog.addChild(textField)
         }
+        dataModifyDialog
+            .addChild(cancelButton)
+            .addChild(confirmButton)
+        sb.append(dataModifyDialog, dataModifyAskDialog)
         val aioElement: HTMLElement = HTMLElement("div").addChild(
             HTMLElement("div")
                 .addClass("data-page-title-container")
@@ -158,6 +156,8 @@ data class DataPageBuilder(
                         .setContent(Encode.forHtml(pageTitle))
                 )
                 .addChildOrNothing(isWritable, insertRowButton)
+        ).addChild(
+            HTMLElement("h3").addClass("data-page-row-counter")
         ).addChild(
             HTMLElement("div").addClass("mdui-table").addChild(
                 HTMLElement("table").addChild(
@@ -180,7 +180,7 @@ data class DataPageBuilder(
         sb.append(javaScript)
         sb.append(
             HTMLElement("mdui-tooltip")
-                .setAttribute("content", "筛选器")
+                .setAttribute("content", "筛选器 (已关闭)")
                 .addChild(
                     HTMLElement("mdui-fab")
                         .setAttribute("icon", "filter_alt_off--rounded")

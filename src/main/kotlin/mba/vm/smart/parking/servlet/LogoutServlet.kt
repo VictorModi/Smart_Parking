@@ -12,7 +12,7 @@ import mba.vm.smart.parking.tool.UserLoginTool.getUserByRequest
 // 想法 cookie与ip生成避免乱七八糟
 /**
  * SmartParking - mba.vm.smart.parking.servlet
- * @description TODO: coming soon.
+ * @description https://github.com/VictorModi/Smart_Parking
  * @author VictorModi
  * @email victormodi@outlook.com
  * @date 2024/6/5 上午12:23

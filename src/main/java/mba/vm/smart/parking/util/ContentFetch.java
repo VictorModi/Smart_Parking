@@ -6,7 +6,7 @@ import org.owasp.encoder.Encode;
  * SmartParking - mba.vm.smart.parking.util
  *
  * @author VictorModi
- * @description TODO: coming soon.
+ * @description https://github.com/VictorModi/Smart_Parking
  * @email victormodi@outlook.com
  * @date 2024/6/4 下午1:17
  */
