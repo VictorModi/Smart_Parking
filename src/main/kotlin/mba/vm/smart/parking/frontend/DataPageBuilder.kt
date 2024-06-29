@@ -75,11 +75,13 @@ data class DataPageBuilder(
         val scriptString: String = when (accessLevel) {
             BaseDataHandler.AccessLevel.READ -> {
                 "setDataPage(\"$pageName\", false, $nameWithDisplayObject, \"$dataType\");"
+//                "dataPageManager.initPage(\"$pageName\", false, $nameWithDisplayObject, \"$dataType\");"
             }
 
             BaseDataHandler.AccessLevel.WRITE -> {
                 isWritable = true
                 "setDataPage(\"$pageName\", true, $nameWithDisplayObject, \"$dataType\");"
+//                "dataPageManager.initPage(\"$pageName\", true, $nameWithDisplayObject, \"$dataType\");"
             }
 
             BaseDataHandler.AccessLevel.NO_ACCESS -> {
@@ -135,6 +137,7 @@ data class DataPageBuilder(
                 textField
                     .addClass("data-modify-dialog-field")
                     .addClass("data-modify-dialog-field-$key")
+                    .setAttribute("data-key", key)
                     .setAttribute("variant", "filled")
                     .setAttribute("label", keyDisplayNameMap[key]!!)
                 dataModifyDialog.addChild(textField)

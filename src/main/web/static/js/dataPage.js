@@ -5,6 +5,7 @@ let isAsking = false;
 let isLoading = false;
 let isAllLoaded = false;
 let loadMaxByTop = undefined;
+let unknownIndexRow = [];
 
 let nextOffset = 0;
 
@@ -14,6 +15,10 @@ window.addEventListener("contentPageChanged", function () {
     isLoading = false;
     isAllLoaded = false
     loadMaxByTop = undefined;
+    setTimeout(function () {
+        nextOffset = 0;
+        unknownIndexRow = [];
+    }, 0);
 });
 
 class CallbackQueue {
@@ -59,7 +64,7 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
     const countTd = document.createElement("td");
 
     countTd.innerText = "#";
-    countTd.classList.add(`.${pageName}-column`, `.${pageName}-column-count`);
+    countTd.classList.add(`${pageName}-column`, `${pageName}-column-count`);
     infoTheadMainTr.appendChild(countTd);
     Object.entries(nameWithDisplayObject).forEach(([key, value]) => {
         const currentTd = document.createElement("td");
@@ -110,10 +115,7 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
     }
 
     function loadMore() {
-        if (isAllLoaded) {
-            layoutMain.removeEventListener("scroll", loadMore);
-            return
-        }
+        if (isAllLoaded) return;
         const startLoadScrollTop = this.scrollHeight - this.clientHeight - 5;
         const aboutScrollTop = Math.round(this.scrollTop);
         const isChecked = aboutScrollTop > startLoadScrollTop ||
@@ -152,6 +154,7 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
         })
 
         function insertRow (obj) {
+            console.log(obj);
             const requestData = {
                 type: dataType,
                 action: "INSERT",
@@ -159,10 +162,13 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
             }
             sendRequest("POST", API_ROOT + "data", JSON.stringify(requestData),
                 function () {
-                    rowElement.remove();
-                    loadMaxByTop();
-                    reCount();
-                    window.mdui.snackbar({message: "删除成功!"});
+                    window.mdui.snackbar({message: "插入成功"});
+                    insertDataToTable(false,[obj], tableBody, nameWithDisplayObject, pageName, -1, dataType);
+                    const tr = tableBody.children[tableBody.children.length - 1];
+                    tr.classList.add(`${pageName}-row-unknown-index`);
+                    if (isWriteable) tr.appendChild(document.createElement("tr"));
+                    unknownIndexRow.push(tr);
+                    isAllLoaded = false;
                 }, function (res) {
                     try {
                         const responseData = JSON.parse(res.xhr.response);
@@ -176,11 +182,12 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
                         });
                     }
                 }, function () {
-                    dialog.open = false;
                     isAsking = false;
                 },  "application/json")
         }
-
+        document.querySelector(`.data-page-insert-button-${pageName}`).addEventListener("click", function () {
+            inputDialog(pageName, "插入", "插入一条新数据", insertRow);
+        });
         loadMaxByTop = _loadByMaxTop;
     }, 0);
 }
@@ -220,10 +227,13 @@ function getDataArray(dataType, extra, limit, offset, ifError) {
  */
 function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObject, pageName, countStartAt, dataType) {
     let count = countStartAt || 0;
+    let lastRow = undefined;
     for (const item of dataArray) {
         count++;
         const currentCount = count;
         const currentRow = document.createElement("tr");
+        currentRow.dataset.id = item.id;
+        currentRow.dataset.index = currentCount;
         currentRow.classList.add(
             `${pageName}-row`,
             `${pageName}-row-id-${item.id}`,
@@ -242,8 +252,10 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
         for (const key of Object.keys(nameWithDisplayObject)) {
             const fieldData = item[key] || "";
             const cell = document.createElement("td");
+            cell.dataset.key = key;
             cell.classList.add(
                 `${pageName}-cell`,
+                `${pageName}-data-cell`,
                 `${pageName}-cell-${key}`
             );
             if (!isWriteable) {
@@ -252,6 +264,7 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
                 const display = document.createElement("span");
 
                 display.innerText = fieldData;
+                display.classList.add("cell-display");
                 cell.addEventListener("dblclick", function() {
                     if (isModifying) return;
                     isModifying = true;
@@ -263,7 +276,7 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
                         if (value !== fieldData) {
                             modifyCell(
                                 item.id,
-                                currentCount,
+                                currentRow.dataset.index,
                                 key,
                                 value,
                                 nameWithDisplayObject[key],
@@ -315,17 +328,76 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
             deleteLink.innerText = "删除";
 
             modifyLink.addEventListener("click", () => {
-
+                modifyRow(currentRow, dataType);
             });
 
             deleteLink.addEventListener("click", () => {
-                deleteRow(item.id, currentCount, currentRow, dataType, pageName);
+                deleteRow(item.id, currentRow.dataset.index, currentRow, dataType, pageName);
             });
             modifyOrDeleteCell.appendChild(modifyLink);
             modifyOrDeleteCell.appendChild(deleteLink);
             currentRow.appendChild(modifyOrDeleteCell);
         }
-        tableBody.appendChild(currentRow);
+
+        if (unknownIndexRow.length > 0 && currentCount !== 0) {
+            const currentRowObj = trToObj(pageName, currentRow);
+            const firstUnknownIndexRow = trToObj(pageName, unknownIndexRow[0]);
+            if (isAllMatch(currentRowObj, firstUnknownIndexRow)) {
+                unknownIndexRow[0].remove();
+                firstUnknownIndexRow.shift();
+                tableBody.appendChild(currentRow);
+            } else {
+                tableBody.insertBefore(currentRow, unknownIndexRow[0]);
+            }
+        } else {
+            tableBody.appendChild(currentRow);
+        }
+        lastRow = currentRow;
+    }
+
+    function modifyRow(rowElement, dataType) {
+        function startModify(obj) {
+            const requestData = {
+                type: dataType,
+                action: "UPDATE",
+                data: {
+                    "id": +rowElement.dataset.id,
+                    ...obj
+                }
+            }
+
+            sendRequest("POST", API_ROOT + "data", JSON.stringify(requestData),
+                function () {
+                    Object.entries(obj).forEach(([key, value]) => {
+                        const cell = rowElement.querySelector(`.${pageName}-cell-${key}`).innerText = value;
+                        if (cell) {
+                            cell.innerText = value;
+                        }
+                    })
+                    window.mdui.snackbar({message: "修改成功"});
+                }, function (res) {
+                    try {
+                        const responseData = JSON.parse(res.xhr.response);
+                        window.mdui.snackbar({
+                            message: "提交数据失败, 原因: " + responseData.message
+                        });
+                    } catch (e) {
+                        console.error(e);
+                        snakeBar({
+                            message: "与服务器连接出现问题，状态码: " + res.xhr.status
+                        });
+                    }
+                }, function () {
+                    isAsking = false;
+                },  "application/json")
+        }
+        inputDialog(
+            pageName,
+            "修改",
+            `正在修改第 ${rowElement.dataset.index} 行`,
+            startModify,
+            trToObj(pageName, rowElement)
+        );
     }
 
     function deleteRow(id, count, rowElement, dataType) {
@@ -391,26 +463,36 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
             const countPrefix = `${pageName}-row-count-`;
             const classesToRemove = [];
             const newCount = index + 1;
+            let isUnknownIndexRow = false;
 
             for (const className of row.classList) {
+
                 if (className.startsWith(countPrefix) && !isNaN(className.slice(countPrefix.length))) {
                     if (className === `${pageName}-row-count-${newCount}`) return;
                     classesToRemove.push(className);
-                } else if (className === `${pageName}-row-odd`) {
+                }
+
+                if (className === `${pageName}-row-odd`) {
                     classesToRemove.push(className);
                 } else if (className === `${pageName}-row-even`) {
                     classesToRemove.push(className);
                 }
             }
 
+
             for (const className of classesToRemove) {
                 row.classList.remove(className);
             }
 
-            row.classList.add(
-                `${pageName}-row-count-${newCount}`,
-                newCount % 2 === 0 ? `${pageName}-row-even` : `${pageName}-row-odd`
-            )
+            if (isUnknownIndexRow) {
+                row.classList.add(newCount % 2 === 0 ? `${pageName}-row-even` : `${pageName}-row-odd`);
+            } else {
+                row.classList.add(
+                    `${pageName}-row-count-${newCount}`,
+                    newCount % 2 === 0 ? `${pageName}-row-even` : `${pageName}-row-odd`
+                );
+                row.dataset.index = newCount;
+            }
         });
     }
 
@@ -480,15 +562,22 @@ function inputDialog(pageName, diaLogHeadLine, dialogDescription, confirmCallBac
     const confirmButton = dialog.querySelector(".dialog-button-confirm");
     dialog.setAttribute("headline", diaLogHeadLine);
     dialog.setAttribute("description", dialogDescription);
-    confirmButton.addEventListener("click", confirmCallBack, {once: true});
 
-    if (inputArray !== undefined && inputArray.length === defaultValues.length) {
-        inputArray.forEach((input, index) => {
-            input.value = defaultValues[index];
+    if (defaultValues !== undefined) {
+        Object.entries(defaultValues).forEach(([key, value]) => {
+            const field = dialog.querySelector(`.data-modify-dialog-field-${key}`);
+            if (field) {
+                field.value = value;
+            }
         });
     }
     function callback() {
-        confirmCallBack(inputArray.map(input => input.value));
+        const inputData = [...inputArray].reduce((acc, value) => {
+            acc[value.dataset.key] = value.value;
+            return acc;
+        }, {});
+        confirmCallBack(inputData);
+        dialog.open = false;
     }
     confirmButton.addEventListener("click", callback);
     dialog.addEventListener("close", () => {
@@ -505,4 +594,44 @@ function inputDialog(pageName, diaLogHeadLine, dialogDescription, confirmCallBac
     setTimeout(function () {
         dialog.querySelector(".data-modify-dialog-field").focus();
     }, 0);
+}
+
+function trToObj(pageName, trElement) {
+    const res = {};
+
+    trElement.querySelectorAll(`.${pageName}-data-cell`).forEach((cell) => {
+        const key = cell.dataset.key;
+        res[key] = cell.textContent;
+    })
+
+    return res;
+}
+
+function isAllMatch(obj1, obj2) {
+    if (obj1 === obj2) {
+        return true;
+    }
+
+    if (typeof obj1 !== typeof obj2) {
+        return false;
+    }
+
+    if (typeof obj1 === 'object' && obj1 !== null && obj2 !== null) {
+        const keys1 = Object.keys(obj1);
+        const keys2 = Object.keys(obj2);
+
+        if (keys1.length !== keys2.length) {
+            return false;
+        }
+
+        for (const key of keys1) {
+            if (!isAllMatch(obj1[key], obj2[key])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    return obj1 === obj2;
 }

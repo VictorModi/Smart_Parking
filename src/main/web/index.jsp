@@ -2,8 +2,7 @@
     request.setCharacterEncoding("UTF-8");
     response.setContentType("text/html; charset=UTF-8");
     response.setCharacterEncoding("UTF-8");%><%@ page import="mba.vm.smart.parking.tool.UserLoginTool" %><%@ page import="mba.vm.smart.parking.GetUserByID" %><%@ page import="kotlin.Pair" %><%@ page import="mba.vm.smart.parking.UserType" %><%@ page import="org.owasp.encoder.Encode" %><%@ page import="jakarta.servlet.http.Cookie" %>
-<%@ page import="mba.vm.smart.parking.frontend.ui.HTMLElement" %>
-<!doctype html>
+<%@ page import="mba.vm.smart.parking.frontend.ui.HTMLElement" %><!doctype html>
 <html lang="cn" class="mdui-theme-auto" xmlns="http://www.w3.org/1999/html" xmlns="">
 <head>
     <meta charset="UTF-8">
@@ -18,13 +17,13 @@
 </head>
 <body>
 <noscript>
-    <h1>您的浏览器不支持 JavaScript，请启用 JavaScript 以获得最佳浏览体验。</h1>
+    <h1>您的浏览器不支持 JavaScript，请启用 JavaScript 以获得正常的体验。</h1>
 </noscript>
 <%
     Pair<GetUserByID, Cookie> USER;
     try {
         USER = UserLoginTool.INSTANCE.getUserByRequest(request);
-    } catch (Exception ex) {
+    } catch (Throwable ex) {
         out.print("无法获取用户信息，这很可能是由于数据库连接失败导致的，请联系系统管理员!!</body>");
         StringBuilder stackTraceBuilder = new StringBuilder();
         stackTraceBuilder.append("\n<!--\n").append(ex.fillInStackTrace()).append("\n\tStackTrace: Ciallo～(∠・ω< )⌒☆\n");
