@@ -6,3 +6,4 @@ CREATE TABLE fee_record (
     payment_time DATETIME,
     remark TEXT
 );
+

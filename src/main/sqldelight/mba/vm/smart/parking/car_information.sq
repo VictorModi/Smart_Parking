@@ -28,12 +28,12 @@ getLimitedCarsCount:
 SELECT COUNT(*)
 FROM car_information
 WHERE
-  (:licensePlate IS NULL OR license_plate = :licensePlate)
-  AND (:ownerName IS NULL OR owner_name = :ownerName)
-  AND (:contactNumber IS NULL OR contact_number = :contactNumber)
-  AND (:brand IS NULL OR brand = :brand)
-  AND (:model IS NULL OR model = :model)
-  AND (:color IS NULL OR color = :color)
+  (:licensePlate IS NULL OR license_plate LIKE CONCAT('%', :licensePlate, '%'))
+  AND (:ownerName IS NULL OR owner_name LIKE CONCAT('%', :ownerName, '%'))
+  AND (:contactNumber IS NULL OR contact_number LIKE CONCAT('%', :contactNumber, '%'))
+  AND (:brand IS NULL OR brand LIKE CONCAT('%', :brand, '%'))
+  AND (:model IS NULL OR model LIKE CONCAT('%', :model, '%'))
+  AND (:color IS NULL OR color LIKE CONCAT('%', :color, '%'))
 LIMIT :limit OFFSET :offset;
 
 getRowCount:
@@ -44,12 +44,12 @@ getDataCountByFilter:
 SELECT COUNT(*)
 FROM car_information
 WHERE
-  (COALESCE(:licensePlate, '') = '' OR license_plate = :licensePlate)
-  AND (COALESCE(:ownerName, '') = '' OR owner_name = :ownerName)
-  AND (COALESCE(:contactNumber, '') = '' OR contact_number = :contactNumber)
-  AND (COALESCE(:brand, '') = '' OR brand = :brand)
-  AND (COALESCE(:model, '') = '' OR model = :model)
-  AND (COALESCE(:color, '') = '' OR color = :color);
+  (:licensePlate IS NULL OR license_plate LIKE CONCAT('%', :licensePlate, '%'))
+  AND (:ownerName IS NULL OR owner_name LIKE CONCAT('%', :ownerName, '%'))
+  AND (:contactNumber IS NULL OR contact_number LIKE CONCAT('%', :contactNumber, '%'))
+  AND (:brand IS NULL OR brand LIKE CONCAT('%', :brand, '%'))
+  AND (:model IS NULL OR model LIKE CONCAT('%', :model, '%'))
+  AND (:color IS NULL OR color LIKE CONCAT('%', :color, '%'));
 
 addCar:
 INSERT INTO car_information
@@ -71,12 +71,12 @@ getDataByFilter:
 SELECT *
 FROM car_information
 WHERE
-  (:licensePlate IS NULL OR license_plate = :licensePlate)
-  AND (:ownerName IS NULL OR owner_name = :ownerName)
-  AND (:contactNumber IS NULL OR contact_number = :contactNumber)
-  AND (:brand IS NULL OR brand = :brand)
-  AND (:model IS NULL OR model = :model)
-  AND (:color IS NULL OR color = :color);
+  (:licensePlate IS NULL OR license_plate LIKE CONCAT('%', :licensePlate, '%'))
+  AND (:ownerName IS NULL OR owner_name LIKE CONCAT('%', :ownerName, '%'))
+  AND (:contactNumber IS NULL OR contact_number LIKE CONCAT('%', :contactNumber, '%'))
+  AND (:brand IS NULL OR brand LIKE CONCAT('%', :brand, '%'))
+  AND (:model IS NULL OR model LIKE CONCAT('%', :model, '%'))
+  AND (:color IS NULL OR color LIKE CONCAT('%', :color, '%'));
 
 updateCarInfo:
 UPDATE car_information

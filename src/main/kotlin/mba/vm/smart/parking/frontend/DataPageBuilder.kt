@@ -11,7 +11,6 @@ import mba.vm.smart.parking.tool.OrNothingTool.addChildOrNothing
 import mba.vm.smart.parking.tool.OrNothingTool.appendOrNothing
 import mba.vm.smart.parking.tool.UserLoginTool.getUserByRequest
 import org.owasp.encoder.Encode
-import java.util.*
 
 /**
  * SmartParking - mba.vm.smart.parking.frontend
@@ -38,7 +37,8 @@ data class DataPageBuilder(
     val dataType: DataRequest.DataType,
     val keyDisplayNameMap: Map<String, String>,
     val notAllowDirect: Boolean = true,
-    val extraHTMLElement: Queue<HTMLElement>?
+    val readOnlyColumns: List<String>?,
+    val extraHTMLElement: List<HTMLElement>?
 ) {
 
     /**
@@ -70,17 +70,19 @@ data class DataPageBuilder(
             alert("Wrong access method.");
             window.location = "${request.contextPath}/#$pageName"
         """.trimIndent()))
-        var isWritable = false;
-        val nameWithDisplayObject = Gson().toJson(keyDisplayNameMap)
+        var isWritable = false
+        val gson = Gson()
+        val nameWithDisplayObject = gson.toJson(keyDisplayNameMap)
+        val readOnlyColumnsArray = gson.toJson(readOnlyColumns)
         val scriptString: String = when (accessLevel) {
             BaseDataHandler.AccessLevel.READ -> {
-                "setDataPage(\"$pageName\", false, $nameWithDisplayObject, \"$dataType\");"
+                "setDataPage(\"$pageName\", false, $nameWithDisplayObject, \"$dataType\", $readOnlyColumnsArray);"
 //                "dataPageManager.initPage(\"$pageName\", false, $nameWithDisplayObject, \"$dataType\");"
             }
 
             BaseDataHandler.AccessLevel.WRITE -> {
                 isWritable = true
-                "setDataPage(\"$pageName\", true, $nameWithDisplayObject, \"$dataType\");"
+                "setDataPage(\"$pageName\", true, $nameWithDisplayObject, \"$dataType\", $readOnlyColumnsArray);"
 //                "dataPageManager.initPage(\"$pageName\", true, $nameWithDisplayObject, \"$dataType\");"
             }
 
@@ -91,7 +93,7 @@ data class DataPageBuilder(
                             window.mdui.snackbar({message: "权限不足，无法访问该页面"});
                             window.location = "${request.contextPath}/#";
                         """.trimIndent())
-                sb.append(noAccessScript);
+                sb.append(noAccessScript)
                 return sb.toString()
             }
         }
@@ -132,6 +134,9 @@ data class DataPageBuilder(
             .addChild(confirmButton)
 
         for (key in keyDisplayNameMap.keys) {
+            if (readOnlyColumns != null && readOnlyColumns.contains(key)) {
+                continue
+            }
             val textField = HTMLElement("mdui-text-field")
             textField
                 .addClass("data-modify-dialog-field")
@@ -157,7 +162,9 @@ data class DataPageBuilder(
                 )
                 .addChildOrNothing(isWritable, insertRowButton)
         ).addChild(
-            HTMLElement("h3").addClass("data-page-row-counter")
+            HTMLElement("p")
+                .addClass("data-page-row-counter")
+                .addClass("data-page-row-counter-$pageName")
         ).addChild(
             HTMLElement("div").addClass("mdui-table").addChild(
                 HTMLElement("table").addChild(

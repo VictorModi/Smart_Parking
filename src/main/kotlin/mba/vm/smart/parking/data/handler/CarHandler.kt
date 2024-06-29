@@ -15,8 +15,17 @@ import mba.vm.smart.parking.tool.MappingTool.getTyped
  * @date 2024/6/20 上午9:14
  */
 object CarHandler : BaseDataHandler() {
-    override val readPermission: Array<UserType> = arrayOf(UserType.SUPER_ADMIN, UserType.PARKING_ADMIN)
-    override val writePermission: Array<UserType> = arrayOf(UserType.SUPER_ADMIN)
+    override val readPermission: Array<UserType> = arrayOf(
+        UserType.CHARGE_ADMIN,
+        UserType.SYSTEM_ADMIN,
+        UserType.PARKING_ADMIN,
+        UserType.SECURITY_ADMIN,
+        UserType.CUSTOMER_SERVICE_ADMIN
+    )
+    override val writePermission: Array<UserType> = arrayOf(
+        UserType.SUPER_ADMIN,
+        UserType.PARKING_ADMIN
+    )
     private val queries: Car_informationQueries = getDatabase().car_informationQueries
 
     override fun select(data: Map<String, Any>?): DataResult {
@@ -75,7 +84,6 @@ object CarHandler : BaseDataHandler() {
 
     override fun insert(data: Map<String, Any>?): DataResult {
         if (data.isNullOrEmpty()) return DataResult.createFailure("Car information need data to insert")
-        println(data)
         queries.addCar(
             licensePlate = data["license_plate"] as? String,
             ownerName = data["owner_name"] as? String,

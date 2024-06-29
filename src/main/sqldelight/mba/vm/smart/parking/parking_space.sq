@@ -1,0 +1,50 @@
+CREATE TABLE parking_space (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    location VARCHAR(100),
+    current_car_id INTEGER REFERENCES car_information(id)
+);
+
+getDataCountByFilter:
+SELECT COUNT(*)
+FROM parking_space
+WHERE
+  (:location IS NULL OR location LIKE '%' || :location || '%');
+
+getDataByFilter:
+SELECT *
+FROM parking_space
+WHERE
+  (:location IS NULL OR location LIKE '%' || :location || '%');
+
+getLimitDataByFilter:
+SELECT *
+FROM parking_space
+WHERE
+  (:location IS NULL OR location LIKE '%' || :location || '%');
+
+getLimitDataCountByFilter:
+SELECT COUNT(*)
+FROM parking_space
+WHERE
+  (:location IS NULL OR location LIKE '%' || :location || '%');
+
+getSpaces:
+SELECT *
+FROM parking_space;
+
+addParkingSpaceWithCarId:
+INSERT INTO parking_space (location, current_car_id) VALUES
+(:location, :currentCarId);
+
+updateParkingSpace:
+UPDATE parking_space SET
+location = COALESCE(:location, location),
+current_car_id = COALESCE(:currentCarId, current_car_id)
+WHERE id = :id;
+
+deleteParkingSpaceByID:
+DELETE FROM parking_space
+WHERE id = :id;
+
+getAffectedRows:
+SELECT ROW_COUNT();

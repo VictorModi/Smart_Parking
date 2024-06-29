@@ -6,17 +6,18 @@ let isLoading = false;
 let isAllLoaded = false;
 let loadMaxByTop = undefined;
 let unknownIndexRow = [];
-
+let filters = undefined;
 let nextOffset = 0;
 
 window.addEventListener("contentPageChanged", function () {
-    isModifying = false;
-    isAsking = false;
-    isLoading = false;
-    isAllLoaded = false
     loadMaxByTop = undefined;
 
     setTimeout(function () {
+        isModifying = false;
+        isAsking = false;
+        isLoading = false;
+        isAllLoaded = false
+        filters = undefined;
         nextOffset = 0;
         unknownIndexRow = [];
     }, 0);
@@ -66,11 +67,13 @@ const dataPageCallbackQueue = new CallbackQueue();
  * @param isWriteable
  * @param nameWithDisplayObject
  * @param dataType
+ * @param readOnlyColumnsArray
  */
-function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
+function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType, readOnlyColumnsArray) {
+    filters = getFiltersFromUrl();
+
     const layoutMain = document.querySelector(".layout-main");
     const loadMaxRows = 15;
-    const filters = getFiltersFromUrl();
     const isFiltered = Object.keys(filters).length > 0;
     const infoTheadMainTr = document.querySelector(`.${pageName}-thead`).children[0];
     const countTd = document.createElement("td");
@@ -109,7 +112,7 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
                     }
                 }
                 if (isAllLoaded) window.mdui.snackbar(snakeBarData);
-                insertDataToTable(isWriteable, listData, tableBody, nameWithDisplayObject, pageName, nextOffset, dataType);
+                insertDataToTable(isWriteable, listData, tableBody, nameWithDisplayObject, pageName, nextOffset, dataType, readOnlyColumnsArray);
                 nextOffset += loadMaxRows;
             }
 
@@ -150,19 +153,8 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
     }
     layoutMain.addEventListener("scroll", loadMore);
 
-    function _loadByMaxTop() {
-        if (layoutMain.scrollHeight - layoutMain.clientHeight - 5 < 0 &&
-            !isAllLoaded) {
-            startLoad()
-            dataPageCallbackQueue.enqueue((done) => {
-                _loadByMaxTop();
-                done();
-            })
-        }
-    }
 
     setTimeout(function () {
-        _loadByMaxTop();
         window.addEventListener("contentPageChanged", function () {
             layoutMain.removeEventListener("scroll", loadMore);
             removeQueryParams();
@@ -195,6 +187,7 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
                     tr.classList.add(`${pageName}-row-unknown-index`);
                     if (isWriteable) tr.appendChild(document.createElement("tr"));
                     unknownIndexRow.push(tr);
+                    setCounter(pageName, dataType);
                     isAllLoaded = false;
                 }, function (res) {
                     try {
@@ -217,7 +210,6 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
         if (insertButton) insertButton.addEventListener("click", function () {
             inputDialog(pageName, "插入", "插入一条新数据", insertRow);
         });
-        loadMaxByTop = _loadByMaxTop;
 
         const filterButton = document.querySelector(`.data-page-filter-button-${pageName}`);
         if (isFiltered) {
@@ -237,6 +229,25 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
         filterButton.addEventListener("click", function () {
             inputDialog(pageName, "筛选", "请填写您的筛选条件", filter, filters);
         })
+
+        setCounter(pageName, dataType);
+
+        setTimeout(function () {
+
+            function _loadByMaxTop() {
+                if (layoutMain.scrollHeight - layoutMain.clientHeight - 5 < 0 &&
+                    !isAllLoaded) {
+                    startLoad()
+                    dataPageCallbackQueue.enqueue((done) => {
+                        _loadByMaxTop();
+                        done();
+                    })
+                }
+            }
+
+            _loadByMaxTop();
+            loadMaxByTop = _loadByMaxTop;
+        }, 0);
     }, 0);
 }
 
@@ -247,7 +258,55 @@ function getDataArray(dataType, extra, limit, offset, ifError) {
         data: {
             ...extra,
             limit: limit,
-            offset: offset || 0,
+            offset: offset || 0
+        }
+    };
+
+    return sendRequest(
+        "POST",
+        API_ROOT + "data",
+        JSON.stringify(requestData),
+        undefined,
+        ifError,
+        undefined,
+        "application/json"
+    );
+}
+
+function setCounter(pageName, dataType) {
+    const counterPart = document.querySelector(`.data-page-row-counter-${pageName}`);
+    const isFiltered = Object.keys(filters).length > 0;
+
+    function handleSuccess(res) {
+        const count = res.data.count;
+        counterPart.innerText = `${isFiltered ? `经过筛选, ` : ""}共有 ${count} 行。`;
+    }
+
+    getAllCount(dataType, filters, function (res) {
+        try {
+            counterPart.innerHTML = "";
+            const responseData = JSON.parse(res.xhr.response);
+            window.mdui.snackbar({
+                message: "获取行数量时出现错误, 原因: " + responseData.message
+            });
+        } catch (e) {
+            console.error(e);
+            snakeBar({
+                message: "与服务器连接出现问题，状态码: " + res.xhr.status
+            });
+        }
+    }).then(
+        handleSuccess
+    )
+}
+
+function getAllCount(dataType, extra, ifError) {
+    const requestData = {
+        type: dataType,
+        action: "SELECT",
+        data: {
+            count: true,
+            ...extra,
         }
     };
 
@@ -273,8 +332,9 @@ function getDataArray(dataType, extra, limit, offset, ifError) {
  * @param pageName 当前页面名称，用于确定元素的 class Name
  * @param countStartAt 计数开始于 ?
  * @param dataType 数据类型，发送 request 时使用
+ * @param readOnlyColumnsArray 只读列
  */
-function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObject, pageName, countStartAt, dataType) {
+function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObject, pageName, countStartAt, dataType, readOnlyColumnsArray) {
     let count = countStartAt || 0;
     let lastRow = undefined;
     for (const item of dataArray) {
@@ -300,6 +360,7 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
         currentRow.appendChild(countCell);
         for (const key of Object.keys(nameWithDisplayObject)) {
             const fieldData = item[key] || "";
+            const fieldType = typeof fieldData;
             const cell = document.createElement("td");
             cell.dataset.key = key;
             cell.classList.add(
@@ -313,7 +374,7 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
             display.classList.add("cell-display");
             toolTips.appendChild(display);
             toolTips.setAttribute("content", nameWithDisplayObject[key])
-            if (isWriteable) {
+            if ((readOnlyColumnsArray === null || readOnlyColumnsArray === undefined || readOnlyColumnsArray.includes(key)) && isWriteable) {
                 cell.addEventListener("dblclick", function() {
                     if (isModifying) return;
                     isModifying = true;
@@ -443,7 +504,7 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
         inputDialog(
             pageName,
             "修改",
-            `正在修改第 ${rowElement.dataset.index} 行`,
+            `正在修改第 ${rowElement.dataset.index} 行 (id: ${rowElement.dataset.id})`,
             startModify,
             trToObj(pageName, rowElement)
         );
@@ -453,7 +514,7 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
         const dialog = document.querySelector(`.data-modify-ask-dialog-${pageName}`);
         const confirmButton = dialog.querySelector(".dialog-button-confirm");
         dialog.setAttribute("headline", "提示:");
-        dialog.setAttribute("description", `你确定要删除 ${count} 行的数据吗?(无法恢复!)`);
+        dialog.setAttribute("description", `你确定要删除 ${count} 行 (id: ${rowElement.dataset.id}) 的数据吗?(无法恢复!)`);
 
         function confirmButtonClickEvent() {
             const requestData = {
@@ -473,6 +534,7 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
                         reCount();
                         done();
                     });
+                    setCounter(pageName, dataType);
                     window.mdui.snackbar({message: "删除成功!"});
                 }, function (res) {
                     try {

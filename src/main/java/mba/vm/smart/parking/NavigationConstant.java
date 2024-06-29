@@ -47,7 +47,7 @@ public class NavigationConstant {
     public static final Navigation PARKING = new Navigation("local_parking--rounded", "车位管理", "parking", new Navigation[]{
             PARKING_CAR__INFO,
             PARKING_STATUS,
-            PARKING_SETTINGS
+//            PARKING_SETTINGS
     });
 
     public static final Navigation SECURITY = new Navigation("security--rounded", "安保管理", "security", new Navigation[]{
@@ -63,14 +63,19 @@ public class NavigationConstant {
     public static Navigation[] getNavigationsByUserType(final UserType userType) {
         Navigation[] defaultNav = new Navigation[]{HOME, USER};
 
+//        return switch (userType) {
+//            case SUPER_ADMIN -> new Navigation[]{HOME, USER, CHARGE, SYSTEM, PARKING, SECURITY, CUSTOMER_SERVICE};
+//            case CHARGE_ADMIN -> new Navigation[]{HOME, USER, CHARGE};
+//            case SYSTEM_ADMIN -> new Navigation[]{HOME, USER, SYSTEM};
+//            case PARKING_ADMIN -> new Navigation[]{HOME, USER, PARKING};
+//            case SECURITY_ADMIN -> new Navigation[]{HOME, USER, SECURITY};
+//            case CUSTOMER_SERVICE_ADMIN -> new Navigation[]{HOME, USER, CUSTOMER_SERVICE};
+//            default -> defaultNav; // 默认导航菜单
+//        };
         return switch (userType) {
-            case SUPER_ADMIN -> new Navigation[]{HOME, USER, CHARGE, SYSTEM, PARKING, SECURITY, CUSTOMER_SERVICE};
-            case CHARGE_ADMIN -> new Navigation[]{HOME, USER, CHARGE};
-            case SYSTEM_ADMIN -> new Navigation[]{HOME, USER, SYSTEM};
-            case PARKING_ADMIN -> new Navigation[]{HOME, USER, PARKING};
-            case SECURITY_ADMIN -> new Navigation[]{HOME, USER, SECURITY};
-            case CUSTOMER_SERVICE_ADMIN -> new Navigation[]{HOME, USER, CUSTOMER_SERVICE};
-            default -> defaultNav; // 默认导航菜单
+            case SUPER_ADMIN, CHARGE_ADMIN, SYSTEM_ADMIN, PARKING_ADMIN, SECURITY_ADMIN, CUSTOMER_SERVICE_ADMIN ->
+                    new Navigation[]{HOME, USER, PARKING};
+            default -> defaultNav;
         };
     }
 }

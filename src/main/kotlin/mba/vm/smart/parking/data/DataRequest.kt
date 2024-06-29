@@ -2,7 +2,10 @@ package mba.vm.smart.parking.data
 
 import mba.vm.smart.parking.data.handler.BaseDataHandler
 import mba.vm.smart.parking.data.handler.CarHandler
+import mba.vm.smart.parking.data.handler.ParkingStatusHandler
+import mba.vm.smart.parking.data.handler.UserHandler
 import mba.vm.smart.parking.tool.MappingTool.getTyped
+import javax.xml.crypto.Data
 
 /**
  * SmartParking - mba.vm.smart.parking.data
@@ -18,7 +21,9 @@ data class DataRequest(
 ) {
     companion object {
         val handlerMap: Map<DataType, BaseDataHandler> = mapOf(
+            DataType.USER to UserHandler,
             DataType.CAR to CarHandler,
+            DataType.PARKING_STATUS to ParkingStatusHandler,
         )
 
         private inline fun <reified T : Enum<T>> String.toEnum(): Result<T> {
@@ -60,6 +65,7 @@ data class DataRequest(
         USER,
         CAR,
         PARKING_STATUS,
+        CHARGE_HISTORY,
     }
 }
 
