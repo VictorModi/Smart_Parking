@@ -18,7 +18,7 @@ data class DataRequest(
 ) {
     companion object {
         val handlerMap: Map<DataType, BaseDataHandler> = mapOf(
-            DataType.CAR to CarHandler
+            DataType.CAR to CarHandler,
         )
 
         private inline fun <reified T : Enum<T>> String.toEnum(): Result<T> {
@@ -58,7 +58,8 @@ data class DataRequest(
 
     enum class DataType {
         USER,
-        CAR
+        CAR,
+        PARKING_STATUS,
     }
 }
 

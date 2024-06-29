@@ -178,9 +178,17 @@ data class DataPageBuilder(
         val javaScript: HTMLElement = HTMLElement("script").addClass("need-load")
             .setContent(scriptString)
         sb.append(javaScript)
+        sb.append(
+            HTMLElement("mdui-tooltip")
+                .setAttribute("content", "筛选器")
+                .addChild(
+                    HTMLElement("mdui-fab")
+                        .setAttribute("icon", "filter_alt_off--rounded")
+                        .addClass("data-page-filter-button")
+                        .addClass("data-page-filter-button-$pageName")
+                )
+        )
         extraHTMLElement?.forEach { sb.append(it) }
         return sb.toString()
     }
-
-
 }

@@ -167,3 +167,10 @@ a:hover {
     justify-content: space-between;
     align-items: center;
 }
+
+.data-page-filter-button {
+    position: fixed;
+    left: calc(100% - 100px);
+    top: calc(100% - 75px);
+    z-index: 1;
+}

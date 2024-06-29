@@ -19,6 +19,10 @@ const f839u38h79h87h2r873ht897gh8w47h87t9384 = df398f98u3978h9hnr8097h58973h5.Ar
 const themeSwitch = document.querySelector('.theme-switch');
 const 绝对不是eval = eval;
 
+if (crypto.randomUUID === undefined) {
+    crypto.randomUUID = jfds9u12h29uh274hg87632g89476tgf8725g928g582;
+}
+
 function toggleTheme() {
     const newTheme = themeSwitch.getAttribute('value') === 'dark' ? 'light' : 'dark';
     themeSwitch.setAttribute('value', newTheme);
@@ -68,7 +72,7 @@ $(document).one('DOMContentLoaded', function() {
             snackbar({message: "有其他页面正在加载，请稍等..."});
             throwPageLoading();
         }
-        const url = 'content/' + section + '.jsp';
+        const url = 'content/' + section + '.jsp' + "?_=" + crypto.randomUUID();
         const layoutMain = $(".layout-main");
         const loadFailedHTML = `<h1>加载失败!</h1>你可以 <a href="javascript:;" onclick="location.reload()">刷新</a> 或者 <a href="#">回到首页</a> 。`
 
@@ -242,9 +246,6 @@ function _0x91CF9382CA83BC (_0x6AC8D) {
             res = _0x6C8AD72(res); // SHA512
         }
         return res;
-    }
-    if (crypto.randomUUID === undefined) {
-        crypto.randomUUID = jfds9u12h29uh274hg87632g89476tgf8725g928g582;
     }
     function Gökçe() {
         const now = new Date();

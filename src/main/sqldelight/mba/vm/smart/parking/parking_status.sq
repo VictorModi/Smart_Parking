@@ -4,3 +4,4 @@ CREATE TABLE parking_space (
     is_available BOOLEAN,
     current_car_id INTEGER REFERENCES car_information(id)
 );
+

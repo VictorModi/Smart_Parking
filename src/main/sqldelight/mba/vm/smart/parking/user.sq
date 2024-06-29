@@ -39,3 +39,11 @@ SELECT password FROM user WHERE id = ? LIMIT 1;
 
 updateLastLoginByID:
 UPDATE user SET last_login_time = NOW() WHERE id = ?;
+
+getLimitedUsers:
+SELECT id, permission_level, created_by, last_login_time, is_disabled, display_name, username, contact_email, note
+FROM user
+LIMIT :limit OFFSET :offset;
+
+updatePasswordByID:
+UPDATE user SET password = :password WHERE id = :id;

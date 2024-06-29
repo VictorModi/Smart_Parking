@@ -15,6 +15,7 @@ window.addEventListener("contentPageChanged", function () {
     isLoading = false;
     isAllLoaded = false
     loadMaxByTop = undefined;
+
     setTimeout(function () {
         nextOffset = 0;
         unknownIndexRow = [];
@@ -25,6 +26,7 @@ class CallbackQueue {
     constructor() {
         this.queue = [];
         this.processing = false;
+        this.paused = false;
         this.locked = false;
     }
 
@@ -35,7 +37,7 @@ class CallbackQueue {
     }
 
     process() {
-        if (this.processing || this.queue.length === 0) return;
+        if (this.processing || this.queue.length === 0 || this.paused) return;
 
         this.processing = true;
         const callback = this.queue.shift();
@@ -43,6 +45,15 @@ class CallbackQueue {
             this.processing = false;
             this.process();
         });
+    }
+
+    pause() {
+        this.paused = true;
+    }
+
+    resume() {
+        this.paused = false;
+        this.process();
     }
 }
 
@@ -59,7 +70,8 @@ const dataPageCallbackQueue = new CallbackQueue();
 function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
     const layoutMain = document.querySelector(".layout-main");
     const loadMaxRows = 15;
-
+    const filters = getFiltersFromUrl();
+    const isFiltered = Object.keys(filters).length > 0;
     const infoTheadMainTr = document.querySelector(`.${pageName}-thead`).children[0];
     const countTd = document.createElement("td");
 
@@ -87,17 +99,31 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
             function handleSuccess(res) {
                 const listData = res.data.list;
                 isAllLoaded = listData.length < loadMaxRows;
-                if (isAllLoaded) window.mdui.snackbar({ message: "已经到底啦" });
+                const snakeBarData = { message: "已经到底啦" };
+                if (isFiltered) {
+                    snakeBarData.message += ", 是否清空筛选器以查看更多?";
+                    snakeBarData.action = "清空筛选器";
+                    snakeBarData.onActionClick = function () {
+                        removeQueryParams();
+                        location.reload();
+                    }
+                }
+                if (isAllLoaded) window.mdui.snackbar(snakeBarData);
                 insertDataToTable(isWriteable, listData, tableBody, nameWithDisplayObject, pageName, nextOffset, dataType);
                 nextOffset += loadMaxRows;
             }
 
-            getDataArray(dataType, undefined, loadMaxRows, nextOffset,
+            getDataArray(dataType, filters, loadMaxRows, nextOffset,
                 function (res) {
+                    dataPageCallbackQueue.pause();
                     try {
                         const data = JSON.parse(res.xhr.response);
                         snakeBar({
-                            message: "获取数据失败, 原因: " + data["message"]
+                            message: "获取数据失败, 原因: " + data["message"],
+                            action: "重试",
+                            onActionClick: function () {
+                                dataPageCallbackQueue.resume();
+                            }
                         });
                     } catch(e) {
                         console.error(e);
@@ -138,7 +164,8 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
     setTimeout(function () {
         _loadByMaxTop();
         window.addEventListener("contentPageChanged", function () {
-            layoutMain.removeEventListener("scroll", loadMore)
+            layoutMain.removeEventListener("scroll", loadMore);
+            removeQueryParams();
             console.log(`${pageName} scroll Listener is removed.`);
         }, {once: true});
 
@@ -185,10 +212,30 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType) {
                     isAsking = false;
                 },  "application/json")
         }
-        document.querySelector(`.data-page-insert-button-${pageName}`).addEventListener("click", function () {
+
+        const insertButton = document.querySelector(`.data-page-insert-button-${pageName}`);
+        if (insertButton) insertButton.addEventListener("click", function () {
             inputDialog(pageName, "插入", "插入一条新数据", insertRow);
         });
         loadMaxByTop = _loadByMaxTop;
+
+        const filterButton = document.querySelector(`.data-page-filter-button-${pageName}`);
+        if (isFiltered) {
+            filterButton.setAttribute("icon", "filter_alt--rounded");
+        }
+        function filter(obj) {
+            Object.entries(obj).forEach(([key, value]) => {
+                if (value) {
+                    updateQueryParam(`filter-${key}`, value);
+                } else {
+                    removeQueryParam(`filter-${key}`);
+                }
+            })
+            location.reload();
+        }
+        filterButton.addEventListener("click", function () {
+            inputDialog(pageName, "筛选", "请填写您的筛选条件", filter, filters);
+        })
     }, 0);
 }
 
@@ -196,12 +243,13 @@ function getDataArray(dataType, extra, limit, offset, ifError) {
     const requestData = {
         type: dataType,
         action: "SELECT",
+        data: {
+            ...extra,
+            limit: limit,
+            offset: offset || 0,
+        }
     };
-    extra = extra || {};
-    requestData.data = Object.assign({}, extra, {
-        limit: limit,
-        offset: offset || 0,
-    });
+
     return sendRequest(
         "POST",
         API_ROOT + "data",
@@ -258,13 +306,13 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
                 `${pageName}-data-cell`,
                 `${pageName}-cell-${key}`
             );
-            if (!isWriteable) {
-                cell.innerHTML = fieldData;
-            } else {
-                const display = document.createElement("span");
-
-                display.innerText = fieldData;
-                display.classList.add("cell-display");
+            const toolTips = document.createElement("mdui-tooltip");
+            const display = document.createElement("span");
+            display.innerText = fieldData;
+            display.classList.add("cell-display");
+            toolTips.appendChild(display);
+            toolTips.setAttribute("content", nameWithDisplayObject[key])
+            if (isWriteable) {
                 cell.addEventListener("dblclick", function() {
                     if (isModifying) return;
                     isModifying = true;
@@ -308,8 +356,8 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
 
                     this.appendChild(modifyInput);
                 });
-                cell.appendChild(display);
             }
+            cell.appendChild(toolTips);
             currentRow.appendChild(cell);
         }
         if (isWriteable) {
@@ -344,7 +392,7 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
             const firstUnknownIndexRow = trToObj(pageName, unknownIndexRow[0]);
             if (isAllMatch(currentRowObj, firstUnknownIndexRow)) {
                 unknownIndexRow[0].remove();
-                firstUnknownIndexRow.shift();
+                unknownIndexRow.shift();
                 tableBody.appendChild(currentRow);
             } else {
                 tableBody.insertBefore(currentRow, unknownIndexRow[0]);
@@ -369,9 +417,9 @@ function insertDataToTable(isWriteable, dataArray, tableBody, nameWithDisplayObj
             sendRequest("POST", API_ROOT + "data", JSON.stringify(requestData),
                 function () {
                     Object.entries(obj).forEach(([key, value]) => {
-                        const cell = rowElement.querySelector(`.${pageName}-cell-${key}`).innerText = value;
-                        if (cell) {
-                            cell.innerText = value;
+                        const cellDisplay = rowElement.querySelector(`.${pageName}-cell-${key}`).querySelector(".cell-display");
+                        if (cellDisplay) {
+                            cellDisplay.innerText = value;
                         }
                     })
                     window.mdui.snackbar({message: "修改成功"});
@@ -634,4 +682,43 @@ function isAllMatch(obj1, obj2) {
     }
 
     return obj1 === obj2;
+}
+
+
+
+function updateQueryParam(key, value) {
+    const url = new URL(window.location);
+    const hash = url.hash;
+    url.hash = '';
+    url.searchParams.set(key, value);
+    url.hash = hash;
+    window.history.replaceState(null, null, url.toString());
+}
+
+function removeQueryParams() {
+    const url = new URL(window.location);
+    url.search = '';
+    window.history.replaceState(null, null, url.toString());
+}
+
+function removeQueryParam(key) {
+    const url = new URL(window.location);
+    url.searchParams.delete(key);
+    window.history.replaceState(null, null, url.toString());
+}
+
+
+function getFiltersFromUrl() {
+    const url = new URL(window.location);
+    const params = new URLSearchParams(url.search);
+    const filters = {};
+
+    params.forEach((value, key) => {
+        if (key.startsWith('filter-')) {
+            const filterKey = key.slice(7); // 移除 'filter-' 前缀
+            filters[filterKey] = value;
+        }
+    });
+
+    return filters;
 }
