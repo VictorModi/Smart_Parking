@@ -11,13 +11,13 @@ let nextOffset = 0;
 
 window.addEventListener("contentPageChanged", function () {
     loadMaxByTop = undefined;
+    filters = undefined;
 
     setTimeout(function () {
         isModifying = false;
         isAsking = false;
         isLoading = false;
-        isAllLoaded = false
-        filters = undefined;
+        isAllLoaded = false;
         nextOffset = 0;
         unknownIndexRow = [];
     }, 0);
@@ -70,11 +70,8 @@ const dataPageCallbackQueue = new CallbackQueue();
  * @param readOnlyColumnsArray
  */
 function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType, readOnlyColumnsArray) {
-    filters = getFiltersFromUrl();
-
     const layoutMain = document.querySelector(".layout-main");
     const loadMaxRows = 15;
-    const isFiltered = Object.keys(filters).length > 0;
     const infoTheadMainTr = document.querySelector(`.${pageName}-thead`).children[0];
     const countTd = document.createElement("td");
 
@@ -95,66 +92,70 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType, rea
         infoTheadMainTr.appendChild(methodTd);
     }
     const tableBody = document.querySelector(`.${pageName}-tbody`);
-    function startLoad() {
-        if (isAllLoaded || isLoading) return;
-        isLoading = true;
-        dataPageCallbackQueue.enqueue((done) => {
-            function handleSuccess(res) {
-                const listData = res.data.list;
-                isAllLoaded = listData.length < loadMaxRows;
-                const snakeBarData = { message: "已经到底啦" };
-                if (isFiltered) {
-                    snakeBarData.message += ", 是否清空筛选器以查看更多?";
-                    snakeBarData.action = "清空筛选器";
-                    snakeBarData.onActionClick = function () {
-                        removeQueryParams();
-                        location.reload();
-                    }
-                }
-                if (isAllLoaded) window.mdui.snackbar(snakeBarData);
-                insertDataToTable(isWriteable, listData, tableBody, nameWithDisplayObject, pageName, nextOffset, dataType, readOnlyColumnsArray);
-                nextOffset += loadMaxRows;
-            }
-
-            getDataArray(dataType, filters, loadMaxRows, nextOffset,
-                function (res) {
-                    dataPageCallbackQueue.pause();
-                    try {
-                        const data = JSON.parse(res.xhr.response);
-                        snakeBar({
-                            message: "获取数据失败, 原因: " + data["message"],
-                            action: "重试",
-                            onActionClick: function () {
-                                dataPageCallbackQueue.resume();
-                            }
-                        });
-                    } catch(e) {
-                        console.error(e);
-                        snakeBar({
-                            message: "与服务器连接出现问题，状态码: " + res.xhr.status
-                        });
-                    }
-                })
-                .then(handleSuccess)
-                .finally(() => {
-                    isLoading = false;
-                    done();
-                });
-        });
-    }
-
-    function loadMore() {
-        if (isAllLoaded) return;
-        const startLoadScrollTop = this.scrollHeight - this.clientHeight - 5;
-        const aboutScrollTop = Math.round(this.scrollTop);
-        const isChecked = aboutScrollTop > startLoadScrollTop ||
-            (startLoadScrollTop === 0 && aboutScrollTop === 0);
-        if (isChecked) startLoad();
-    }
-    layoutMain.addEventListener("scroll", loadMore);
 
 
     setTimeout(function () {
+        filters = getFiltersFromUrl();
+        const isFiltered = filters && Object.keys(filters).length > 0;
+
+        function startLoad() {
+            if (isAllLoaded || isLoading) return;
+            isLoading = true;
+            dataPageCallbackQueue.enqueue((done) => {
+                function handleSuccess(res) {
+                    const listData = res.data.list;
+                    isAllLoaded = listData.length < loadMaxRows;
+                    const snakeBarData = { message: "已经到底啦" };
+                    if (isFiltered) {
+                        snakeBarData.message += ", 是否清空筛选器以查看更多?";
+                        snakeBarData.action = "清空筛选器";
+                        snakeBarData.onActionClick = function () {
+                            removeQueryParams();
+                            location.reload();
+                        }
+                    }
+                    if (isAllLoaded) window.mdui.snackbar(snakeBarData);
+                    insertDataToTable(isWriteable, listData, tableBody, nameWithDisplayObject, pageName, nextOffset, dataType, readOnlyColumnsArray);
+                    nextOffset += loadMaxRows;
+                }
+                console.log(filters);
+                getDataArray(dataType, filters, loadMaxRows, nextOffset,
+                    function (res) {
+                        dataPageCallbackQueue.pause();
+                        try {
+                            const data = JSON.parse(res.xhr.response);
+                            snakeBar({
+                                message: "获取数据失败, 原因: " + data["message"],
+                                action: "重试",
+                                onActionClick: function () {
+                                    dataPageCallbackQueue.resume();
+                                }
+                            });
+                        } catch(e) {
+                            console.error(e);
+                            snakeBar({
+                                message: "与服务器连接出现问题，状态码: " + res.xhr.status
+                            });
+                        }
+                    })
+                    .then(handleSuccess)
+                    .finally(() => {
+                        isLoading = false;
+                        done();
+                    });
+            });
+        }
+
+        function loadMore() {
+            if (isAllLoaded) return;
+            const startLoadScrollTop = this.scrollHeight - this.clientHeight - 5;
+            const aboutScrollTop = Math.round(this.scrollTop);
+            const isChecked = aboutScrollTop > startLoadScrollTop ||
+                (startLoadScrollTop === 0 && aboutScrollTop === 0);
+            if (isChecked) startLoad();
+        }
+        layoutMain.addEventListener("scroll", loadMore);
+
         window.addEventListener("contentPageChanged", function () {
             layoutMain.removeEventListener("scroll", loadMore);
             removeQueryParams();
@@ -252,6 +253,7 @@ function setDataPage(pageName, isWriteable, nameWithDisplayObject, dataType, rea
 }
 
 function getDataArray(dataType, extra, limit, offset, ifError) {
+    console.log(extra);
     const requestData = {
         type: dataType,
         action: "SELECT",
@@ -275,7 +277,7 @@ function getDataArray(dataType, extra, limit, offset, ifError) {
 
 function setCounter(pageName, dataType) {
     const counterPart = document.querySelector(`.data-page-row-counter-${pageName}`);
-    const isFiltered = Object.keys(filters).length > 0;
+    const isFiltered = filters && Object.keys(filters).length > 0;
 
     function handleSuccess(res) {
         const count = res.data.count;
